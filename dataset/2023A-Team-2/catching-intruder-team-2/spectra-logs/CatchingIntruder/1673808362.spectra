@@ -1,0 +1,114 @@
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+
+// 8X8 grid 
+define D := 7;
+type Dim = Int(0..D);
+
+// two robots R0 and R1
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+// 4 fixed obstacles 
+define 
+	obstacle1X := 2;
+	obstacle1Y := 1;
+	obstacle2X := 3;
+	obstacle2Y := 1;
+	obstacle3X := 4;
+	obstacle3Y := 1;
+	obstacle4X := 5;
+	obstacle4Y := 1;
+
+// moving intruder D
+env Dim intruderX;
+env Dim intruderY;
+
+// Initially, the two robots R0 and R1 are located at the top left and right corners respectively. 
+gar ini robotX0 = 0 & robotY0= 0;
+gar ini robotX1 = 7 & robotY1= 0;
+
+// In each state, both robots can stay in place or move to an empty adjacent cell, but they never move diagonally.
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos); 
+  
+gar robot0Moves:
+  always ((!moveDist(robotX0)&moveDist(robotY0)) | (moveDist(robotX0)&!moveDist(robotY0)));  
+  
+gar robot1Moves:
+  always ((!moveDist(robotX1)&moveDist(robotY1)) | (moveDist(robotX1)&!moveDist(robotY1)));  
+
+//A moving intruder (D) enters the grid from a random cell at the bottom row.  
+asm ini intruderY = 7;
+
+//In each state, the intruder may stay in place or move to an empty adjacent cell, but it never moves diagonally. 
+asm intruderMoves:
+  always ((!moveDist(intruderX)&moveDist(intruderY)) | (moveDist(intruderX)&!moveDist(intruderY)));  
+
+//The robots cannot go on top of each other.
+predicate samePlace(Dim dim0x, Dim dim0y, Dim dim1x, Dim dim1y):
+	dim0x = dim1x & dim0y = dim1y;
+
+gar !samePlace(robotX0, robotY0, robotX1, robotY1);
+
+//They also cannot go on top of the intruder.
+gar !samePlace(robotX0, robotY0, intruderX, intruderY);
+gar !samePlace(robotX1, robotY1, intruderX, intruderY);
+
+//If a robot is horizontally or vertically adjacent to the intruder, the intruder must try to move away from it.
+define intruderLeftToRobot0 := (intruderX = robotX0-1 & intruderY = robotY0);
+		intruderRightToRobot0 := (intruderX = robotX0+1 & intruderY = robotY0);
+		intruderAboveRobot0 := (intruderX = robotX0 & intruderY = robotY0-1);
+		intruderDownRobot0 := (intruderX = robotX0 & intruderY = robotY0+1);
+		intruderAdjacentRobot0 := intruderLeftToRobot0 | intruderRightToRobot0 | intruderAboveRobot0 | intruderDownRobot0;
+		intruderLeftToRobot1 := (intruderX = robotX1-1 & intruderY = robotY1);
+		intruderRightToRobot1 := (intruderX = robotX1+1 & intruderY = robotY1);
+		intruderAboveRobot1 := (intruderX = robotX1 & intruderY = robotY1-1);
+		intruderDownRobot1 := (intruderX = robotX1 & intruderY = robotY1+1);
+		intruderAdjacentRobot1 := intruderLeftToRobot1 | intruderRightToRobot1 | intruderAboveRobot1 | intruderDownRobot1;
+
+asm alw intruderAdjacentRobot0 implies ((!moveDist(intruderX)&moveDist(intruderY)) | (moveDist(intruderX)&!moveDist(intruderY)));
+asm alw intruderAdjacentRobot1 implies ((!moveDist(intruderX)&moveDist(intruderY)) | (moveDist(intruderX)&!moveDist(intruderY)));
+
+//If and when the intruder stays in the same cell for 4 consecutive states it disappears and immediately appears again in a random cell at the bottom row.
+define intruderStays := next(intruderX) = intruderX & next(intruderY) = intruderY;
+
+
+counter intruderCounter(0..4){
+	intruderCounter = 0;
+	inc: intruderStays;
+	reset: !intruderStays;
+	overflow: false;
+}
+
+asm alw intruderCounter = 4 implies intruderY = 7;
+
+// In every infinite run, the intruder must stay in place for 4 consecutive states infinitely many times.
+//define shouldStay := false;
+///// **** In java we need to make shouldStay be 4 times true in a row and the 5th false ************ ////
+//asm alw shouldStay = true implies intruderStays; 
+
+// At the beginning of the run, the robot in the top right corner must not move before the robot from the top left corner visits the bottom left corner.
+define robot1Stays := next(robotX1) = robotX1 & next(robotY1) = robotY1;
+		robot1IsMoving := next(robotX1) != robotX1 | next(robotY1) != robotY1;
+		robot0AtBottomLeftCorner := robotX0 = 0 & robotY0 = 7;
+		
+gar ini robot1Stays & robot0AtBottomLeftCorner implies robot1IsMoving;
+
+//Black cells denote cells that the robots and the intruder must never visit. 
+gar !samePlace(robotX0, robotY0, 2, 1);
+gar !samePlace(robotX0, robotY0, 3, 1);
+gar !samePlace(robotX0, robotY0, 4, 1);
+gar !samePlace(robotX0, robotY0, 5, 1);
+gar !samePlace(robotX1, robotY1, 2, 1);
+gar !samePlace(robotX1, robotY1, 3, 1);
+gar !samePlace(robotX1, robotY1, 4, 1);
+gar !samePlace(robotX1, robotY1, 5, 1);
+asm !samePlace(intruderX, intruderY, 2, 1);
+asm !samePlace(intruderX, intruderY, 3, 1);
+asm !samePlace(intruderX, intruderY, 4, 1);
+asm !samePlace(intruderX, intruderY, 5, 1);

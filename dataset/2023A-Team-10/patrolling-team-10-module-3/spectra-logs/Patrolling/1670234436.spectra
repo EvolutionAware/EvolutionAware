@@ -1,0 +1,73 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+type Dim = Int(0..4);
+
+sys Dim[2] robot;
+env Dim[3][2] goals;
+env boolean[3] isGoalBlocked;
+
+define 
+robotInStartingPoint:= robot[0] = 0 & robot[1] = 0;
+
+robotAtGoalA:= robotAtGoal(0);
+robotAtGoalB:= robotAtGoal(1);
+robotAtGoalC:= robotAtGoal(2);
+robotAtAnyGoal := robotAtGoalA | robotAtGoalB | robotAtGoalC;
+
+gar alwEv robotAtGoalA;
+gar alwEv robotAtGoalB;
+gar alwEv robotAtGoalC;
+
+gar ini robot[0] = 0;
+gar ini robot[1] = 0;
+
+asm alwEv isGoalBlocked[0] = false;
+asm alwEv isGoalBlocked[0] = true;
+
+asm alwEv isGoalBlocked[1] = false;
+asm alwEv isGoalBlocked[0] = true;
+
+asm alwEv isGoalBlocked[2] = false;
+asm alwEv isGoalBlocked[0] = true;
+
+asm always goalsAreFixed();
+asm always !goalsAreNotDifferent();
+
+asm GoalNotAtStartingPoint(0);
+asm GoalNotAtStartingPoint(1);
+asm GoalNotAtStartingPoint(2);
+
+gar robotMoves:
+always moveDist(robot[0]) & moveDist(robot[1]);
+
+gar visitStartPointAfterGoalA:
+S_responds_to_P_globally(robotInStartingPoint, robotAtAnyGoal);
+
+gar alw isGoalBlocked[0] -> !robotAtGoalA;
+gar alw isGoalBlocked[1] -> !robotAtGoalB;
+gar alw isGoalBlocked[2] -> !robotAtGoalC;
+
+predicate moveDist(Dim pos):
+  pos+1 = next (pos) |
+pos = next (pos) |
+pos-1 = next (pos) ;
+
+predicate robotAtGoal(Int(0..3) index):
+	robot[0] = goals[index][0] & robot[1] = goals[index][1];
+	
+predicate GoalNotAtStartingPoint(Int(0..3) index):
+	goals[index][0] != 0 & goals[index][1] != 0;
+	
+predicate goalsAreFixed():
+	(goals[0][0] = next(goals[0][0])) & (goals[0][1] = next(goals[0][1])) &
+	(goals[1][0] = next(goals[1][0])) & (goals[1][1] = next(goals[1][1])) &
+	(goals[2][0] = next(goals[2][0])) & (goals[2][1] = next(goals[2][1]));
+	
+predicate goalsAreNotDifferent():
+	((goals[0][0] = goals[1][0]) & (goals[0][1] = goals[1][1])) |
+	((goals[1][0] = goals[2][0]) & (goals[1][1] = goals[2][1])) |
+	((goals[2][0] = goals[0][0]) & (goals[2][1] = goals[0][1]));
+	
+
+   

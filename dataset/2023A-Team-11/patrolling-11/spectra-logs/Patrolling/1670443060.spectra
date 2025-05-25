@@ -1,0 +1,167 @@
+// ---
+// --- --- ---
+
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+// Part 1: Initializing all entities
+
+sys DimX robotX;
+sys DimY robotY;
+
+gar ini robotX = 0;
+gar ini robotY = 0;
+
+// Declaring obstacles that are fixed in place
+define obstacle1X := 0;
+define obstacle1Y := 3;
+
+define obstacle2X := 1;
+define obstacle2Y := 1;
+
+define obstacle3X := 2;
+define obstacle3Y := 1;
+
+define obstacle4X := 3;
+define obstacle4Y := 3;
+
+define obstacle5X := 3;
+define obstacle5Y := 4;
+
+// Declaring targets
+// Making sure targets are not created on obstacles
+env DimX targetAX;
+env DimY targetAY;
+asm alw !(targetAX = 0 & targetAY = 0) & !(targetAX = 0 & targetAY = 3) & !(targetAX = 1 & targetAY = 1) & !(targetAX = 2 & targetAY = 1) &
+!(targetAX = 3 & targetAY = 3) & !(targetAX = 3 & targetAY = 4);
+
+env DimX targetBX;
+env DimY targetBY;
+asm alw !(targetBX = 0 & targetBY = 0) & !(targetBX = 0 & targetBY = 3) & !(targetBX = 1 & targetBY = 1) & !(targetBX = 2 & targetBY = 1) &
+!(targetBX = 3 & targetBY = 3) & !(targetBX = 3 & targetBY = 4);
+
+env DimX targetCX;
+env DimY targetCY;
+asm alw !(targetCX = 0 & targetCY = 0) & !(targetCX = 0 & targetCY = 3) & !(targetCX = 1 & targetCY = 1) & !(targetCX = 2 & targetCY = 1) &
+!(targetCX = 3 & targetCY = 3) & !(targetCX = 3 & targetCY = 4);
+
+// Fix targets' location 
+asm alw (next(targetAX) = targetAX & next(targetAY) = targetAY) & (next(targetBX) = targetBX & next(targetBY) = targetBY) &
+(next(targetCX) = targetCX & next(targetCY) = targetCY);
+
+
+// Declaring moving obstacles (y coordinate is constant)
+env DimX mX;
+asm ini mX = 0;
+
+predicate moveDistX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+predicate moveDistY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+// Robot moves one step max at a time
+gar robotMoves:
+  always moveDistX(robotX) & moveDistY(robotY);
+
+// Moving obstacle moves only in x axis
+asm always moveDistX(mX);
+  
+// robot doesn't step on obstacles
+//gar alw !(robotX = mX & robotY = 2);
+gar alw !(robotX = obstacle1X & robotY = obstacle1Y) & !(robotX = obstacle2X & robotY = obstacle2Y) &
+	!(robotX = obstacle3X & robotY = obstacle3Y) & !(robotX = obstacle4X & robotY = obstacle4Y) & !(robotX = obstacle5X & robotY = obstacle5Y);
+
+// Moving obstacle visits both ends of the row infinitely often
+asm alwEv mX = 0;
+asm alwEv mX = 4;
+
+// Always, sometimes in the future, the robot will visit each of the targets.
+gar alwEv (robotX = targetAX & robotY = targetAY);
+gar alwEv (robotX = targetBX & robotY = targetBY);
+gar alwEv (robotX = targetCX & robotY = targetCY);
+
+// After reaching a target the robot goes back to 0,0
+// atBase makes sure the robot stands on 0,0 and then resets the condition.
+counter atBase(0..1){
+	chargingCounter = 0;
+	reset: !(robotX = 0 & robotY = 0);
+	inc: (robotX = 0 & robotY = 0);
+	overflow: false;
+}
+
+gar P_becomes_true_between_Q_and_R((robotX = 0 & robotY = 0), ((robotX = targetAX & robotY = targetAY) |
+(robotX = targetBX & robotY = targetBY) | (robotX = targetCX & robotY = targetCY)), atBase = 1);
+
+// Defining blockage for the target
+env boolean ABlocked;
+env boolean BBlocked;
+env boolean CBlocked;
+
+asm alwEv ABlocked = false;
+asm alwEv BBlocked = false;
+asm alwEv CBlocked = false;
+
+// Moving obstacle should not cover the robot.
+//asm alw (mX != robotX & 2 != robotY);
+
+//asm !(((targetAX = 0 & targetAY = 1) | (targetBX = 0 & targetBY = 1) | (targetCX = 0 & targetCY = 1)) &
+//((targetAX = 1 & targetAY = 2) | (targetBX = 1 & targetBY = 2) | (targetCX = 1 & targetCY = 2)) &
+//((targetAX = 1 & targetAY = 3) | (targetBX = 1 & targetBY = 3) | (targetBX = 1 & targetBY = 3)));
+
+//predicate notBlockedTargetIn(DimX rX, DimY rY):
+//!(rX = targetAX & rY = targetAY & next(ABlocked) = false) | !(rX = targetBX & rY = targetBY & next(BBlocked) = false) |
+//!(rX = targetCX & rY = targetCY & next(CBlocked) = false);
+//
+//predicate noObstaclesIn(DimX rX, DimY rY):
+//!(rX = obstacle1X & rY = obstacle1X) | !(rX = obstacle2X & rY = obstacle2X) | !(rX = obstacle3X & rY = obstacle3X) |
+//!(rX = obstacle4X & rY = obstacle4X) | !(rX = obstacle5X & rY = obstacle5X);
+//
+//predicate noBlockage(DimX rX, DimY rY):
+//noObstaclesIn(rX, rY) | notBlockedTargetIn(rX, rY);
+//
+//asm alw robotY = 2 implies (robotX - 1 >= 0 & noBlockage(robotX - 1, robotY - 1) ) | noBlockage(robotX, robotY - 1) |
+//(robotX + 1 <= 4 & noBlockage(robotX + 1, robotY - 1)) | (robotX - 1 >= 0 & noBlockage(robotX - 1, robotY + 1)) |
+//noBlockage(robotX, robotY + 1) | (robotX + 1 <= 4 & noBlockage(robotX + 1, robotY + 1));
+
+asm alw (!ABlocked & !BBlocked & !CBlocked) | (ABlocked & !BBlocked & !CBlocked) | (BBlocked & !ABlocked & !CBlocked) |
+(CBlocked & !ABlocked & CBlocked);
+
+asm alw !(targetAX = 0 & targetAY = 1) & !(targetBX = 0 & targetBY = 1) & !(targetCX = 0 & targetCY = 1);
+asm alw !(targetAX = 4 & targetAY = 4) & !(targetBX = 4 & targetBY = 4) & !(targetCX = 4 & targetCY = 4);
+
+// Robot doesn't stand on blocked target
+gar alw next(ABlocked) = true implies (next(robotX) != targetAX | next(robotY) != targetAY);
+gar alw next(BBlocked) = true implies (next(robotX) != targetBX | next(robotY) != targetBY);
+gar alw next(CBlocked) = true implies (next(robotX) != targetCX | next(robotY) != targetCY);
+
+//asm alw (robotX = targetAX & robotY = targetAY) implies ABlocked = false;
+//asm alw (robotX = targetBX & robotY = targetBY) implies BBlocked = false;
+//asm alw (robotX = targetCX & robotY = targetCY) implies CBlocked = false;
+
+// When robot lose power go to recharge for 4 times
+env boolean lostPower;
+gar P_becomes_true_between_Q_and_R(robotX = 4 & robotY = 0, lostPower = true, chargingCounter = 1);
+asm alwEv lostPower != true;
+
+
+counter chargingCounter(0..4){
+	chargingCounter = 0;
+	reset: !(robotX = 4 & robotY = 0);
+	inc: (robotX = 4 & robotY = 0 & lostPower = true);
+	overflow: false;
+}
+
+gar alw (lostPower = true & (robotX = 4 & robotY = 0) & chargingCounter < 4) implies (next(robotX) = 4 & next(robotY) = 0);
+// lostPower stays steady
+asm alw lostPower = true & chargingCounter < 4 implies lostPower = true;

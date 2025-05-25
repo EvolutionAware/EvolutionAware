@@ -1,0 +1,100 @@
+import "../imports/DwyerPatterns.spectra"
+spec EscapingGuard
+
+define D := 7;
+
+type Dim = Int(0..D);
+type guardDim = Int(0..6);
+type cnt = Int(0..3);
+
+sys Dim robotX;
+sys Dim robotY;
+
+define T1X:=0;
+	   T1Y:=0;
+	   T2X:=7;
+	   T2Y:=7;
+	   T3X:=0;
+	   T3Y:=7;
+
+define obstacle1X:=2;
+	   obstacle1Y:=2;
+	   obstacle2X:=2;
+	   obstacle2Y:=3;
+	   obstacle3X:=2;
+	   obstacle3Y:=4;
+	   obstacle4X:=2;
+	   obstacle4Y:=5;
+	   
+define atT1:= robotX = T1X and robotY = T1Y;
+	   atT2:= robotX = T2X and robotY = T2Y;
+	   atT3:= robotX = T3X and robotY = T3Y;
+
+	   
+predicate moveDist(Dim pos):
+	pos+1 = next(pos) or
+	pos   = next(pos) or
+	pos-1 = next(pos);
+	  
+predicate guardMoveDist(guardDim pos):
+	pos+1 = next(pos) or
+	pos   = next(pos) or
+	pos-1 = next(pos); 
+
+env guardDim guardX;
+env guardDim guardY;
+
+asm alw guardMoveDist(guardX) and guardMoveDist(guardY);
+
+gar ini robotX = 7;
+gar ini robotY = 0;
+
+gar alw moveDist(robotX) and moveDist(robotY);
+
+
+//probably one vacuity 
+gar alwEv atT1;
+gar alwEv atT2;
+gar alwEv atT3; 
+
+gar P_becomes_true_between_Q_and_R(atT2, atT1, atT3);
+
+gar alw !(robotX = obstacle1X and robotY = obstacle1Y);
+gar alw !(robotX = obstacle2X and robotY = obstacle2Y);
+gar alw !(robotX = obstacle3X and robotY = obstacle3Y);
+gar alw !(robotX = obstacle4X and robotY = obstacle4Y);
+
+//gar alw !(robotX = guardX and robotY = guardY) and !(robotX = guardX and robotY = guardY + 1)
+//	 and !(robotX = guardX + 1 and robotY = guardY + 1) and !(robotX = guardX + 1 and robotY = guardY);
+	 
+env cnt move;
+
+asm alw move = 0 and robotY < guardY ->  next(guardY) < guardY;
+asm alw move = 0 and robotY > (guardY+1) -> next(guardY) > guardY;
+asm alw move = 0 and robotX > (guardX+1) -> next(guardX) > guardX;
+asm alw move = 0 and robotX < guardX -> next(guardX) < guardX;
+
+asm alw move = 2 -> next(move) = 0;
+asm alw (move = 0 or move = 1) -> next(move) = move + 1;
+
+asm alw move != 0 -> ((next(guardX) = guardX) and (next(guardY) = guardY));
+asm alw move = 0 -> (moveDist(robotX) and moveDist(robotY));
+
+gar alw move = 2 implies (!((next(robotY) = guardY - 1 and next(robotX) = guardX) 
+						or (next(robotY) = guardY - 1 and next(robotX) = guardX + 1)
+						or (next(robotY) = guardY - 1 and next(robotX) = guardX + 2)
+						or (next(robotY) = guardY - 1 and next(robotX) = guardX - 1)) 
+						and !((next(robotY) = guardY and next(robotX) = guardX + 2)
+	   			 			or (next(robotY) = guardY + 1 and next(robotX) = guardX + 2))
+	   			  		and !((next(robotY) = guardY and next(robotX) = guardX - 1)
+	   			 			or (next(robotY) = guardY + 1 and next(robotX) = guardX - 1)) 
+	   			 		and !((next(robotY) = guardY + 2 and next(robotX) = guardX)
+	   			  			or (next(robotY) = guardY + 2 and next(robotX) = guardX + 1)
+	   			  			or (next(robotY) = guardY + 2 and next(robotX) = guardX + 2)
+	   			  			or (next(robotY) = guardY + 2 and next(robotX) = guardX - 1)));
+	   			  			
+gar alw move = 0 -> ((next(robotX) = robotX) and (next(robotY) = robotY));
+gar alw move !=0 -> moveDist(robotX) and moveDist(robotY);
+
+
+asm ini move = 0;

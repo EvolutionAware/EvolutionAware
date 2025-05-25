@@ -1,0 +1,84 @@
+import "../imports/DwyerPatterns.spectra"
+spec Deliveries
+
+define
+DX := 5;
+DY := 5;
+elevatorX := 0;
+robotsColliding := (robotX0 = robotX1) & (robotY0 = robotY1);
+robot0Atdelivery0 := (robotX0 = DeliveryX0) & (robotY0 = DeliveryY0);
+robot1Atdelivery1 := (robotX1 = DeliveryX1) & (robotY1 = DeliveryY1);
+robot0AtPickUp := (robotX0 = 5) & (robotY0 = 5);
+robot1AtPickUp := (robotX1 = 5) & (robotY1 = 5);
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+type Coord = Int(0..DY);
+
+sys DimX robotX0;
+sys DimY robotY0;
+sys DimX robotX1;
+sys DimY robotY1;
+
+env DimY elevatorY;
+env DimX DeliveryX0;
+env DimY DeliveryY0;
+env DimX DeliveryX1;
+env DimY DeliveryY1; 
+
+gar ini robotY0 = 5;
+gar ini robotY1 = 5;
+gar alw !robotsColliding;
+gar alw moveHorizontally(robotX0);
+gar alw moveHorizontally(robotX1);
+gar alw robotX0 = elevatorX -> robotY0 = elevatorY;
+gar alw robotX1 = elevatorX -> robotY1 = elevatorY;
+gar alwEv robot0Atdelivery0;
+gar alwEv robot1Atdelivery1;
+//gar alw deliveries0  = 3 -> !robot0Atdelivery0;
+//gar alw deliveries1 = 3 -> !robot1Atdelivery1;
+
+asm alw moveVertaclly(elevatorY);
+asm alwEv elevatorY = 0;
+asm alwEv elevatorY = 5;
+
+asm Delivery0DontMoveUntilRobot0IsThere:
+always !robot0Atdelivery0 -> ((DeliveryX0 = next(DeliveryX0)) & (DeliveryY0 = next (DeliveryY0)));
+
+asm Delivery1DontMoveUntilRobot1IsThere:
+always !robot1Atdelivery1 -> ((DeliveryX1 = next (DeliveryX1)) & (DeliveryY1 = next (DeliveryY1)));
+
+asm Delivery0MovesWhenRobot0IsThere:
+always robot0Atdelivery0 -> !(DeliveryY0 = next(DeliveryY0));
+
+asm Delivery1MovesWhenRobot1IsThere:
+always robot1Atdelivery1 -> !(DeliveryY1 = next(DeliveryY1));
+
+asm always DeliveryY0 != 0;
+asm always DeliveryY1 != 0;
+
+//asm trig [true]*[elevatorY = 0] |=> [elevatorY = 1][elevatorY = 2][elevatorY = 3][elevatorY = 4][elevatorY = 5][true]*;
+//asm trig [true]*[elevatorY = 5] |=> [elevatorY = 4][elevatorY = 3][elevatorY = 2][elevatorY = 1][elevatorY = 0][true]*;
+
+counter deliveries0(0..3) {
+	deliveries0 = 0;
+	inc: robot0Atdelivery0;
+	reset: robot0AtPickUp;
+	overflow: false;
+}
+
+counter deliveries1(0..3) {
+	deliveries1 = 0;
+	inc: robot1Atdelivery1;
+	reset: robot1AtPickUp;
+	overflow: false;
+}
+
+predicate moveHorizontally(DimX pos):
+	pos+1 = next (pos) |
+	pos = next (pos) |
+	pos-1 = next (pos);
+
+predicate moveVertaclly(DimY pos):
+	pos+1 = next (pos) |
+	pos-1 = next (pos);	

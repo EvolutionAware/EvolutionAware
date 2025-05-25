@@ -1,0 +1,132 @@
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+
+define D := 7;
+robot0AtButtomLeftCorner:= (robotX0 = 0) & (robotY0 = 7);
+robot0AtStartingPoint := (robotX0 = 0) & (robotY0 = 0);
+robot1AtStartingPoint := (robotX1 = 7) & (robotY1 = 0);
+
+type Dim = Int(0..D);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+env Dim intruderX;
+env Dim intruderY;
+
+gar ini robot0AtStartingPoint;
+gar ini robot1AtStartingPoint;
+
+gar alw notAtObstacles(robotX0, robotY0);
+gar alw notAtObstacles(robotX1, robotY1);
+gar alw notColliding(robotX0, robotY0, robotX1, robotY1);
+
+gar alw notColliding(intruderX, intruderY, robotX0, robotY0);
+gar alw notColliding(intruderX, intruderY, robotX1, robotY1);
+
+gar alw (moveDist(robotX0) & robotY0 = next(robotY0)) | (moveDist(robotY0) & robotX0 = next(robotX0));
+
+gar alw (moveDist(robotX1) & robotY1 = next(robotY1) & ONCE(robot0AtButtomLeftCorner)) |
+		(moveDist(robotY1) & robotX1 = next(robotX1) & ONCE(robot0AtButtomLeftCorner)) |
+		(robotY1 = next(robotY1) & robotX1 = next(robotX1));
+		
+gar alwEv !intruderCanMove();
+
+asm ini intruderY = 7;
+asm alw notAtObstacles(intruderX, intruderY);
+asm alw (moveDist(intruderX) & intruderY = next(intruderY)) | (moveDist(intruderY) & intruderX = next(intruderX) |
+		(intruderX = next(intruderX) & intruderY = next(intruderY)));
+asm alw notColliding(intruderX, intruderY, robotX0, robotY0);
+asm alw notColliding(intruderX, intruderY, robotX1, robotY1);
+asm alw ((adjecentToIntruder(robotX0, robotY0) | adjecentToIntruder(robotX1, robotY1)) & intruderCanMove()) ->
+		 (next(intruderX) != intruderX | next(intruderY) != intruderY);
+asm alw !intruderMovingToDangerousLocation();
+
+
+//asm alw (intruderX + 1 = next(intruderX) & intruderY = next(intruderY)) |
+//		(intruderX - 1 = next(intruderX) & intruderY = next(intruderY)) |
+//		(intruderX = next(intruderX) & intruderY + 1 = next(intruderY)) |
+//		(intruderX = next(intruderX) & intruderY - 1= next(intruderY)); 
+
+//asm alw adjecentToIntruder(robotX0, robotY0) -> (next(intruderX) != robotX0) & (next(intruderY) != robotY0);
+//asm alw adjecentToIntruder(robotX1, robotY1) -> (next(intruderX) != robotX1) & (next(intruderY) != robotY1);
+
+//asm alw robotAboveIntruder() & !robotBelowIntruder() & intruderY < 7 ->  (intruderY + 1 = next(intruderY));
+//asm alw !robotAboveIntruder() & robotBelowIntruder() & intruderY > 0 ->  (intruderY - 1 = next(intruderY));
+//asm alw robotToTheRightOfIntruder() & !robotToTheLeftOfIntruder() & intruderX > 0 ->  (intruderX - 1 = next(intruderX));
+//asm alw !robotToTheRightOfIntruder() & robotToTheLeftOfIntruder() & intruderX < 7 ->  (intruderX + 1 = next(intruderX));
+//
+//asm alw robotAboveIntruder() & robotToTheRightOfIntruder() & intruderX = 0 & intruderY = 7 -> intruderX = next(intruderX) & intruderY = next(intruderY);
+//asm alw robotAboveIntruder() & robotToTheLeftOfIntruder() & intruderX = 7 & intruderY = 7 -> intruderX = next(intruderX) & intruderY = next(intruderY);
+//asm alw robotBelowIntruder() & robotToTheRightOfIntruder() & intruderX = 0 & intruderY = 0 -> intruderX = next(intruderX) & intruderY = next(intruderY);
+//asm alw robotBelowIntruder() & robotToTheLeftOfIntruder() & intruderX = 7 & intruderY = 0 -> intruderX = next(intruderX) & intruderY = next(intruderY);
+
+
+
+//asm alw robotBelowIntruder() -> (intruderY = next(intruderY)) | (intruderY - 1 = next(intruderY));
+//asm alw robotToTheRightOfIntruder() -> (intruderX = next(intruderX)) | (intruderX - 1 = next(intruderX));
+//asm alw robotToTheLeftOfIntruder() -> (intruderX = next(intruderX)) | (intruderX + 1= next(intruderX));
+
+
+predicate notAtObstacles(Dim x, Dim y):
+	((x != 2) | (y != 1)) & ((x != 3) | (y != 1)) &
+	((x != 4) | (y != 1)) & ((x != 5) | (y != 1));
+
+//predicate notAtObstacles(Dim x, Dim y):
+//true;
+
+predicate intruderNotCollidingWithRobots(Dim x, Dim y):
+		((x != robotX0) | (y != robotY0)) &
+		((x != robotX1) | (y != robotY1)) ;
+
+predicate notColliding(Dim x1, Dim y1, Dim x2, Dim y2):
+	(x1 != x2) | (y1 != y2);
+
+predicate moveDist(Dim pos):
+	pos+1 = next (pos) |
+	pos = next(pos) |
+	pos-1 = next (pos);
+	
+
+predicate intruderCanMove():
+	((intruderY < 7) & (intruderNotCollidingWithRobots(intruderX, intruderY + 1)) & (notAtObstacles(intruderX, intruderY + 1))) |
+	(intruderY > 0  & (intruderNotCollidingWithRobots(intruderX, intruderY - 1)) & (notAtObstacles(intruderX, intruderY - 1))) |
+	(intruderX < 7 &(intruderNotCollidingWithRobots(intruderX + 1, intruderY)) & (notAtObstacles(intruderX + 1, intruderY))) |
+	(intruderX > 0 & (intruderNotCollidingWithRobots(intruderX - 1, intruderY)) & (notAtObstacles(intruderX - 1, intruderY)));
+	
+predicate intruderMovingToDangerousLocation():
+	(next(intruderX) = robotX0) & (next(intruderY) = robotY0) |
+	(next(intruderX) = robotX1) & (next(intruderY) = robotY1) |
+	
+	(next(intruderX) = robotX0 - 1) & (next(intruderY) = robotY0) |
+	(next(intruderX) = robotX0 + 1) & (next(intruderY) = robotY0) |
+	
+	(next(intruderX) = robotX1 -1) & (next(intruderY) = robotY1) |
+	(next(intruderX) = robotX1 + 1) & (next(intruderY) = robotY1) |
+	
+	(next(intruderX) = robotX0) & (next(intruderY) = robotY0 -1) |
+	(next(intruderX) = robotX0) & (next(intruderY) = robotY0 + 1) |
+	
+	(next(intruderX) = robotX1) & (next(intruderY) = robotY1 -1) |
+	(next(intruderX) = robotX1) & (next(intruderY) = robotY1 +1);
+
+
+predicate robotAboveIntruder():
+	((intruderY = robotY0 - 1) & (intruderX = robotX0)) | ((intruderY = robotY1 - 1) & (intruderX = robotX1));
+
+predicate robotBelowIntruder():
+	((intruderY = robotY0 + 1) & (intruderX = robotX0)) | ((intruderY = robotY1 + 1) & (intruderX = robotX1));
+
+predicate robotToTheRightOfIntruder():
+	((intruderX = robotX0 + 1) & (intruderY = robotY0)) | ((intruderX = robotX1 + 1) & (intruderY = robotY1));
+
+predicate robotToTheLeftOfIntruder():
+	((intruderX = robotX0 - 1) & (intruderY = robotY0)) | ((intruderX = robotX1 - 1) & (intruderY = robotY1));
+	
+predicate adjecentToIntruder(Dim x, Dim y):
+	((x + 1) = intruderX & (intruderY = y)) | ((x - 1) = intruderX & (intruderY = y)) |
+	((x = intruderX) & (intruderY = y + 1)) | ((x = intruderX) & (intruderY = y - 1));
+
+
+

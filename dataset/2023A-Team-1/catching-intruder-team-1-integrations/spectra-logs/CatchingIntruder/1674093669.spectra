@@ -1,0 +1,128 @@
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+define D := 7;
+type Dim = Int(0..D);
+type Turns = Int(0..3);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+env Dim intruderX;
+env Dim intruderY;
+env Turns turns;
+
+/*
+ * Module 1
+ */
+gar ini robotX0 = 0 and robotY0 = 0 and robotX1 = 7 and robotY1 = 0;
+
+gar S_precedes_to_P_globally(robotX0 = 0 and robotY0 = 7, !(robotX1 = 7 and robotY1 = 0));
+
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos-1 = next(pos);
+
+predicate stayDist(Dim pos):
+  pos   = next(pos);
+
+gar robotsMoveLegally:
+  alw ((moveDist(robotX0) and stayDist(robotY0)) or
+       (stayDist(robotX0) and moveDist(robotY0)) or
+       (stayDist(robotX0) and stayDist(robotY0)))
+      and
+      ((moveDist(robotX1) and stayDist(robotY1)) or
+       (stayDist(robotX1) and moveDist(robotY1)) or
+       (stayDist(robotX1) and stayDist(robotY1)));
+
+/*
+ * Module 3
+ */
+define intruderMovesLegally :=
+  ((moveDist(intruderX) and stayDist(intruderY)) or
+  (stayDist(intruderX) and moveDist(intruderY)) or
+  (stayDist(intruderX) and stayDist(intruderY)));
+
+define intruderNearRobot0 :=
+  (((intruderX = robotX0) and (intruderY - robotY0 = 1)) or
+  ((intruderX = robotX0) and (robotY0 - intruderY = 1)) or
+  ((intruderY = robotY0) and (intruderX - robotX0 = 1)) or
+  ((intruderY = robotY0) and (robotX0 - intruderX = 1)));
+
+define intruderNearRobot1 :=
+  (((intruderX = robotX1) and (intruderY - robotY1 = 1)) or
+  ((intruderX = robotX1) and (robotY1 - intruderY = 1)) or
+  ((intruderY = robotY1) and (intruderX - robotX1 = 1)) or
+  ((intruderY = robotY1) and (robotX1 - intruderX = 1)));
+
+define intruderCantMoveLeft :=
+  (intruderX = 0 or
+  (intruderY = robotY0 and intruderX - robotX0 = 1) or
+  (intruderY = robotY1 and intruderX - robotX1 = 1));
+
+define intruderCantMoveRight :=
+  (intruderX = D or
+  (intruderY = robotY0 and robotX0 - intruderX = 1) or
+  (intruderY = robotY1 and robotX1 - intruderX = 1));
+
+define intruderCantMoveUp :=
+  (intruderY = 0 or
+  (intruderX = robotX0 and intruderY - robotY0 = 1) or
+  (intruderX = robotX1 and intruderY - robotY1 = 1));
+
+define intruderCantMoveDown :=
+  (intruderY = D or
+  (intruderX = robotX0 and robotY0 - intruderY = 1) or
+  (intruderX = robotX1 and robotY1 - intruderY = 1));  
+
+define intruderRespectsRobot0 :=
+  ((intruderX = robotX0 implies next(intruderY) != robotY0) and
+  (intruderY = robotY0 implies next(intruderX) != robotX0));
+
+define intruderRespectsRobot1 :=
+  ((intruderX = robotX1 implies next(intruderY) != robotY1) and
+  (intruderY = robotY1 implies next(intruderX) != robotX1));
+
+define intruderNearRobot := (intruderNearRobot0 or intruderNearRobot1);
+
+define intruderCanMove := (!intruderCantMoveLeft or !intruderCantMoveRight or !intruderCantMoveUp or !intruderCantMoveDown);
+
+define intruderMoves := (!stayDist(intruderX) or !stayDist(intruderY));
+
+define intruderRespectsRobots := (intruderRespectsRobot0 and intruderRespectsRobot1);
+
+asm increasingTurns:
+  alw (intruderX = next(intruderX) and intruderY = next(intruderY)) iff (turns+1 = next(turns));
+
+asm turnsBehave:
+  alw (turns+1 = next(turns) or next(turns) = 0);
+
+asm intruderEscapesFromRobots:
+  alw (intruderNearRobot and intruderCanMove) implies (intruderMoves and intruderRespectsRobots);
+
+asm alw turns != 3 implies intruderMovesLegally;
+
+asm intruderCantMoveStaysInPlace:
+  alw ((!intruderCanMove) and turns < 3) implies intruderRespectsRobots;
+
+gar intruderStaysFourTurnsInPlace:
+  alwEv turns = 3 and (!intruderCanMove);
+
+/*
+ * Assumptions added to make merge of modules 1 and 3 realizable
+ */
+asm ini intruderY = 7;
+
+asm alw !intruderMovesLegally implies next(intruderY) = 7;
+
+/*
+ * Module 2
+ */
+gar alw !(robotX1 = robotX0 and robotY1 = robotY0);
+
+gar alw !(robotX0 = intruderX and robotY0 = intruderY);
+gar alw !(robotX1 = intruderX and robotY1 = intruderY);
+
+gar robotsNotPassingThroughEachOther:
+	alw (robotY0 = robotY1 and next(robotY0) = next(robotY1)) implies !((next(robotX0) = robotX1) and (next(robotX1) = robotX0));

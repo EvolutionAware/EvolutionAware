@@ -1,0 +1,81 @@
+import "../imports/DwyerPatterns.spectra"
+spec Deliveries
+
+define DX := 5;
+define DY := 5;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+type Coord = Int(0..DY);
+/* The lambs can't be on the zero floor. */
+type DimLambX = Int(1..DX);
+type DimLambY = Int(1..DX);
+
+sys DimX robotX0;
+sys DimY robotY0;
+sys DimX robotX1;
+sys DimY robotY1;
+
+/* step 1 - The lambs can be in every room except the zero floor and the elevator shaft. 
+ 	The robot can moves anywhere without limitation.
+ 	The package needs to stay at it place until the robot visits it.
+ 	The robot needs to alwEv get to its corresponding package.
+ 	The robots need to start at the ground floor. */
+env DimLambX lambX0;
+env DimLambY lambY0;
+env DimLambX lambX1;
+env DimLambY lambY1;
+
+/* The robot needs to alwEv get to its corresponding package. */
+define	atLamb0 := robotX0 = lambX0 and robotY0 = lambY0;
+		atLamb1 := robotX1 = lambX1 and robotY1 = lambY1;
+gar alwEv atLamb0;
+gar alwEv atLamb1;
+
+/* The package needs to stay at it place until the robot visits it. */
+asm lamb0DontMoveUntilRobot0IsThere:
+  alw !atLamb0 -> (lambX0=next(lambX0) & lambY0=next(lambY0));  
+asm lamb1DontMoveUntilRobot1IsThere:
+  alw !atLamb1 -> (lambX1=next(lambX1) & lambY1=next(lambY1));
+
+
+/* The robots start at the zero floor  */
+gar ini robotY0 = 0;
+gar ini robotY1 = 0;
+
+
+/* step 2 - The elevator moves just one floor up or down in every step.
+ We assume that the elevator visits the ground floor and the top floor infinitely many times in every infinite run. */
+ env DimY elevatorY;
+ 
+ define elevatorX := 0;
+ 
+/* The elevator movement */
+predicate moveDist(DimY posY):
+	posY+1 = next(posY) |
+	posY-1 = next(posY);
+
+asm elevatoroves: alw moveDist(elevatorY);
+asm alwEv elevatorY = 0;
+asm alwEv elevatorY = 5;
+
+
+/* step 3 - To travel between floors, the robots must use an elevator.
+ A robot may enter or exit the elevator only when it is on the same floor as the robot. 
+ On each floor the robot can only move in steps of one or stay at place. */
+define	Rob0Atelevator := robotX0 = 0 and robotY0 = elevatorY ;
+		Rob1Atelevator := robotX1 = 0 and robotY1 = elevatorY;
+
+predicate moveInFloor(DimX posX):
+	  posX+1 = next(posX) |
+	  posX   = next(posX) |
+	  posX-1 = next(posX);
+
+gar alw next(robotY0) != robotY0 -> robotY0 = elevatorY and robotX0 = elevatorX; 
+
+
+	
+
+
+
+

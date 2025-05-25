@@ -1,0 +1,152 @@
+import "../imports/DwyerPatterns.spectra"
+// --- 
+// --- --- ---
+// Integration
+
+spec Deliveries
+
+define DX := 5;
+define DY := 5;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+type Coord = Int(0..DY);
+
+sys DimX robotX0;
+sys DimY robotY0;
+sys DimX robotX1;
+sys DimY robotY1;
+
+env DimX p0X;
+env DimY p0Y;
+env DimX p1X;
+env DimY p1Y;
+
+asm alw p0Y != 5;
+asm alw p1Y != 5;
+
+env DimY elvY;
+define elvX := 0;
+
+asm alwEv elvY = 0;
+asm alwEv elvY = 5;
+
+gar ini robotY0 = 5 & robotY1 = 5;
+
+predicate samePlace(DimX x1, DimY y1, DimX x2, DimY y2):
+	x1 = x2 & y1 = y2;
+
+// Robots can't cross or stand in the same place
+gar alw !samePlace(robotX0, robotY0, robotX1, robotY1);
+//gar alw robotY0 = robotY1 & robotX0 < robotX1 implies next(robotX0) <= next(robotX1);
+//gar alw robotY0 = robotY1 & robotX1 < robotX0 implies next(robotX1) <= next(robotX0);
+
+gar alw robotY0 != next(elvY) implies next(robotX0) != elvX;
+gar alw robotY1 != next(elvY) implies next(robotX1) != elvX;
+
+
+gar alw robotX0 = 0 -> (next(robotY0) = next(elvY) | next(robotX0) != 0);
+gar alw robotX1 = 0 -> (next(robotY1) = next(elvY) | next(robotX1) != 0);
+
+gar alw robotX0 = 0 -> robotY0 = elvY;
+gar alw robotX1 = 0 -> robotY1 = elvY;
+
+predicate moveDistX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);  
+  
+predicate moveDistY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);  
+  
+predicate stayY(DimY dimy):
+next(dimy) = dimy;
+
+predicate stayX(DimX dimx):
+next(dimx) = dimx;
+
+define	r0atElv := robotX0 = elvX & robotY0 =  elvY;
+		r1atElv := robotX1 = elvX & robotY1 =  elvY;
+		move0WithElv := next(robotY0) = next(elvY) & next(robotX0) = elvX;
+		move1WithElv := next(robotY1) = next(elvY) & next(robotX1) = elvX;
+
+gar alw moveDistX(robotX0);
+gar alw moveDistX(robotX1);
+				
+gar alw !r0atElv implies stayY(robotY0);
+//gar alw r0atElv implies (move0WithElv) | (stayY(robotY0) & next(robotX0) != 0);
+gar alw !r1atElv implies stayY(robotY1);
+//gar alw r1atElv implies (move1WithElv) | (stayY(robotY1) & next(robotX1) != 0);
+
+gar alw robotX0 = 0 -> robotY0 = elvY;
+gar alw robotX1 = 0 -> robotY1 = elvY;
+
+define	r0AtPack := robotX0 = p0X & robotY0 = p0Y;
+		r1AtPack := robotX1 = p1X & robotY1 = p1Y;
+		r0AtCorner := robotX0 = 5 & robotY0 = 0;
+		r1AtCorner := robotX1 = 5 & robotY1 = 0;
+
+asm alw !(p0X = robotX0 & p0Y = robotY0) | r0Count >= 3 -> p0X = next(p0X) & p0Y = next(p0Y);
+asm alw !(p1X = robotX1 & p1Y = robotY1) | r1Count >= 3  -> p1X = next(p1X) & p1Y = next(p1Y);
+asm alw (p0X = robotX0 & p0Y = robotY0 & r0Count < 3) -> p0Y != next(p0Y);
+asm alw (p1X = robotX1 & p1Y = robotY1 & r1Count < 3) -> p1Y != next(p1Y);
+
+
+
+gar alwEv r0AtPack;
+gar alwEv r1AtPack;
+
+counter r0Count(0..3){
+	r0Count = 0;
+	reset: robotY0 = 0 & robotX0 = 5;
+	inc: robotX0 = p0X & robotY0 = p0Y;
+	overflow: false; 
+}
+
+counter r1Count(0..3){
+	r1Count = 0;
+	reset: robotY1 = 0 & robotX1 = 5;
+	inc: robotX1 = p1X & robotY1 = p1Y;
+	overflow: false; 
+}
+
+
+//gar alw r0Count = 3 implies !samePlace(robotX0, robotY0, p0X, p0Y);
+//gar alw r1Count = 3 implies !samePlace(robotX1, robotY1, p1X, p1Y);
+
+
+//gar alwEv r0AtCorner;
+//gar alwEv r1AtCorner;
+
+//asm alwEv r0atElv;
+//asm alwEv r1atElv;
+
+asm alw moveDistY(elvY);
+
+
+
+
+
+
+
+
+
+
+
+
+//env boolean goUp;
+//asm ini goUp = true;
+//asm ini elvY = 5;
+//asm alw elvY = 5 implies next(goUp) = false;
+//asm alw elvY = 0 implies next(goUp) = true;
+//asm alw elvY > 0 & elvY < 5 implies next(goUp) = goUp;
+//asm alw (goUp = true & elvY < 5) implies next(elvY) = elvY + 1;
+//asm alw (goUp = false & elvY > 0) implies next(elvY) = elvY - 1;
+
+
+
+//
+//gar alw turns = 0 implies !r1atElv;
+//gar alw turns = 1 implies !r0atElv;

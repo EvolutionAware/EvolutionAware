@@ -1,0 +1,10 @@
+<record>
+  <index>1672991136122</index>
+  <date>Fri Jan 06 09:45:36 IST 2023</date>
+  <message>TimeStamp-1672991136-Operation-ALL_CORES-Buffer-Core #1 at lines &lt; 74 &gt; is</message>
+</record>
+<record>
+  <index>1672991136161</index>
+  <date>Fri Jan 06 09:45:36 IST 2023</date>
+  <message>TimeStamp-1672991136-Operation-ALL_CORES-Buffer-Found 1 elements that belong to all cores, at lines &lt; 74 &gt;. See markers in specification file.</message>
+</record>

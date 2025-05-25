@@ -1,0 +1,51 @@
+import "../imports/DwyerPatterns.spectra"
+spec EscapingGuard
+
+//robot reaching targets
+
+define D := 7;
+
+type Dim = Int(0..D);
+type dimGuard = Int(0..6);
+type dimCounter = Int(0..3);
+
+//The system controls the robot. 
+sys Dim robotX;
+sys Dim robotY;
+
+//three fixed targets T1, T2, and T3 
+define 
+	T1X := 0;
+	T1Y := 0;
+	
+	T2X := 7;
+	T2Y := 7;
+
+	T3X := 0;
+	T3Y := 7;
+
+//A robot R has to visit the three targets T1, T2, and T3 infinitely often in every run.
+define atT1 := robotX = 0 & robotY = 0;
+	   atT2 := robotX = 7 & robotY = 7;
+	   atT3 := robotX = 0 & robotY = 7;
+
+gar alwEv atT1;
+gar alwEv atT2;
+gar alwEv atT3;
+
+//whenever the robot visits T1, it must visit T2 before it visits T3
+gar P_becomes_true_between_Q_and_R(atT2, atT1, atT3);
+
+//2X2 moving guard M. The moving guard is controlled by the environment. 
+env dimGuard movingGuardLeft_X;
+env dimGuard movingGuardTop_Y;
+
+
+//Initially, the robot stands at the top right corner (marked Init), and the guard stands at the top left corner (covering T1).
+define 
+	robotAtTopRightCorner := robotX = 7 & robotY = 0;
+	guardAtTopLeftCorner := movingGuardLeft_X = 0& movingGuardTop_Y = 0;
+	
+gar ini robotAtTopRightCorner;
+asm ini guardAtTopLeftCorner;
+

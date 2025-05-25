@@ -1,0 +1,267 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+gar ini robotX = 0;
+gar ini robotY = 0;
+
+// Declaring the obstacles 
+define 
+	obstacle1X := 1;
+	obstacle1Y := 1;
+	obstacle2X := 2;
+	obstacle2Y := 1;
+	obstacle3X := 0;
+	obstacle3Y := 3;
+	obstacle4X := 3;
+	obstacle4Y := 3;
+	obstacle5X := 3;
+	obstacle5Y := 4;
+
+// Declaring the targets
+env DimX A_X;
+env DimY A_Y;
+env DimX B_X;
+env DimY B_Y;
+env DimX C_X;
+env DimY C_Y;
+
+// charger
+define
+	chargeX := 4;
+	chargeY := 0;
+
+
+env DimX movingObstacle_X;
+env DimY movingObstacle_Y;
+asm alw movingObstacle_Y = 2;
+//girls
+//asm ini movingObstacle_X = 0;
+
+
+//define movingObstacle_Y := 2;
+
+//Declaring most left and most right
+//define 
+//	mostLeftX := 0;
+//	mostRightX := 4;
+
+predicate stayY(DimY dimy):
+ next(dimy) = dimy;
+
+predicate stayX(DimX dimx):
+ next(dimx) = dimx;
+
+predicate stayXY(DimX dimx, DimY dimy):
+ stayX(dimx) & stayY(dimy);
+
+
+//Targets should not change location during a run
+//asm alw (next(A_X) = A_X) & (next(A_Y) = A_Y);
+//asm alw (next(B_X) = B_X) & (next(B_Y) = B_Y);
+//asm alw (next(C_X) = C_X) & (next(C_Y) = C_Y);
+// using stay
+asm alw stayXY(A_X, A_Y);
+asm alw stayXY(B_X, B_Y);
+asm alw stayXY(C_X, C_Y);
+
+
+// targets != obstacles
+
+//predicate samePlace(DimX dim1x, DimY dim1y, DimX dim2x, DimY dim2y):
+//dim1x = dim2x & dim1y = dim2y;
+
+/// ******** same place ******/////
+//predicate notAtObstacles(DimX dimx, DimY dimy):
+//!(obstacle1X = dimx & obstacle1Y = dimy) &
+//!(obstacle2X = dimx & obstacle2Y = dimy) &
+//!(obstacle3X = dimx & obstacle3Y = dimy) &
+//!(obstacle4X = dimx & obstacle4Y = dimy) &
+//!(obstacle5X = dimx & obstacle5Y = dimy);
+
+//!(1 = dimx & 1 = dimy) &
+//!(2 = dimx & 1 = dimy) &
+//!(0 = dimx & 3 = dimy) &
+//!(3 = dimx & 3 = dimy) &
+//!(3 = dimx & 4 = dimy);
+
+// Obstacles should not cover the targets
+//asm alw notAtObstacles(A_X, A_Y) & notAtObstacles(B_X, B_Y) & notAtObstacles(C_X, C_Y);
+//According to ---'s help	
+//gar alw notAtObstacles(A_X, A_Y) & notAtObstacles(B_X, B_Y) & notAtObstacles(C_X, C_Y);	
+
+
+//girls
+predicate targetNotOnObstacle(DimX targetX, DimY targetY):
+	! (targetX=1 & targetY=1) &	! (targetX=2 & targetY=1) &	! (targetX=0 & targetY=3) &	! (targetX=3 & targetY=3) &	! (targetX=3 & targetY=4) ;	
+
+asm ini targetNotOnObstacle(A_X, A_Y);
+asm ini targetNotOnObstacle(B_X, B_Y);
+asm ini targetNotOnObstacle(C_X, C_Y);
+
+
+
+//possible next steps of the robot
+predicate moveDistX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+predicate moveDistY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+ gar robotMoves:
+  always moveDistX(robotX) & moveDistY(robotY);
+  
+//possible next steps of the moving obstacle
+//asm movingObstaclesMoves:
+// always (moveDistX(movingObstacle_X) & next(movingObstacle_Y) = movingObstacle_Y);
+
+asm movingObstaclesMoves:
+ always moveDistX(movingObstacle_X) & stayY(movingObstacle_Y);
+
+//req 1
+// Always, sometimes in the future, the robot will visit each of the targets
+gar alwEv robotX = A_X & robotY = A_Y;
+gar alwEv robotX = B_X & robotY = B_Y;
+gar alwEv robotX = C_X & robotY = C_Y;
+
+ // req 2
+//Whenever the robot visits a target, it should eventually also visit the top left corner.  
+define 
+	atTarget := (robotX = A_X & robotY = A_Y) | (robotX = B_X & robotY = B_Y) | (robotX = C_X & robotY = C_Y) ;
+	atLeftCorner := robotX = 0 & robotY = 0;
+
+//gar P_becomes_true_After_Q(atTarget, atLeftCorner);
+//According to ---'s help
+gar S_responds_to_P_globally(atTarget, atLeftCorner);	
+
+
+//req 3
+//Target may always be blocked (turned from green to red) for a finite number of states and then eventually unblocked
+
+env boolean BlockedA;
+env boolean BlockedB;
+env boolean BlockedC;
+
+asm alwEv !BlockedA;
+asm alwEv !BlockedB;
+asm alwEv !BlockedC;
+
+asm ini !(A_X = 0 & A_Y = 0);
+asm ini !(B_X = 0 & B_Y = 0);
+asm ini !(C_X = 0 & C_Y = 0);
+
+//If target is blocked, the robot should not visit it
+//asm alw BlockedA = true -> !(robotX = A_X & robotY = A_Y);
+//asm alw BlockedB = true -> !(robotX = B_X & robotY = B_Y);
+//asm alw BlockedC = true -> !(robotX = C_X & robotY = C_Y);
+
+//According to ---'s help
+//gar alw BlockedA = true -> !(robotX = A_X & robotY = A_Y);
+//gar alw BlockedB = true -> !(robotX = B_X & robotY = B_Y);
+//gar alw BlockedC = true -> !(robotX = C_X & robotY = C_Y);
+
+//check
+//asm alw (robotX = A_X & robotY = A_Y) -> next(BlockedA) = BlockedA;  
+//asm alw (robotX = B_X & robotY = B_Y) -> next(BlockedB) = BlockedB;  
+//asm alw (robotX = C_X & robotY = C_Y) -> next(BlockedC) = BlockedC;
+//According to ---'s help
+//gar alw (robotX = A_X & robotY = A_Y) -> next(BlockedA) = BlockedA;  
+//gar alw (robotX = B_X & robotY = B_Y) -> next(BlockedB) = BlockedB;  
+//gar alw (robotX = C_X & robotY = C_Y) -> next(BlockedC) = BlockedC;    
+
+// The sliding abstacle visits both ends of the row infinitely often
+//asm alwEv (movingObstacle_X = 0 & movingObstacle_Y = 2);
+//asm alwEv (movingObstacle_X = 4 & movingObstacle_Y = 2);
+
+//girls
+asm alwEv movingObstacle_X = 0;
+asm alwEv movingObstacle_X = 4;
+
+//The robot should guarantee to never be covered by the moving obstacle. 
+gar alw !(robotX = movingObstacle_X & robotY = movingObstacle_Y);
+//gar alw (robotX != movingObstacle_X | robotY != movingObstacle_Y);
+
+
+// robot should not touch the obstacles
+//gar alw (robotX != obstacle1X | robotY != obstacle1Y);
+//gar alw (robotX != obstacle2X | robotY != obstacle2Y);
+//gar alw (robotX != obstacle3X | robotY != obstacle3Y);
+//gar alw (robotX != obstacle4X | robotY != obstacle4Y);
+//gar alw (robotX != obstacle5X | robotY != obstacle5Y);
+
+gar alw (robotX != 1 | robotY != 1);
+gar alw (robotX != 2 | robotY != 1);
+gar alw (robotX != 0 | robotY != 3);
+gar alw (robotX != 3 | robotY != 3);
+gar alw (robotX != 3 | robotY != 4);
+
+
+ 
+//gar alw !((robotX = obstacle1X & robotY = obstacle1Y)|(robotX = obstacle2X & robotY = obstacle2Y)|(robotX = obstacle3X & robotY = obstacle3Y)|(robotX = obstacle4X & robotY = obstacle4Y)|(robotX = obstacle5X & robotY = obstacle5Y));
+
+
+
+//charger
+env boolean robotLostPower;
+define robotIsAtChargingPoint := robotX = 4 & robotY = 0;
+
+//gar P_becomes_true_After_Q(robotIsAtChargingPoint, robotLostPower);
+//According to ---'s help
+gar S_responds_to_P_globally(robotLostPower,robotIsAtChargingPoint);
+//gar alwEv robotIsAtChargingPoint;
+
+counter chargeCounter(0..4){
+	chargeCounter = 0;
+	inc: robotIsAtChargingPoint;
+	reset: !robotIsAtChargingPoint;
+	overflow: false;
+}
+
+gar alw (robotIsAtChargingPoint & chargeCounter < 4) -> (next(robotX) = robotX & next(robotY) = robotY);
+
+
+///// not girls
+
+// 	
+asm alw !(A_X = 4 & A_Y = 0);
+asm alw !(B_X = 4 & B_Y = 0);
+asm alw !(C_X = 4 & C_Y = 0);
+
+//
+asm alw !(A_X = 0 & A_Y = 2);
+asm alw !(A_X = 4 & A_Y = 2);
+asm alw !(B_X = 0 & B_Y = 2);
+asm alw !(B_X = 4 & B_Y = 2);
+asm alw !(C_X = 0 & C_Y = 2);
+asm alw !(C_X = 4 & C_Y = 2);
+
+gar alw (A_X = next(movingObstacle_X)) -> (next(robotX) != A_X);
+gar alw (B_X = next(movingObstacle_X)) -> (next(robotX) != B_X);
+gar alw (C_X = next(movingObstacle_X)) -> (next(robotX) != C_X);
+
+predicate samePlace(DimX dim1x, DimY dim1y, DimX dim2x, DimY dim2y):
+dim1x = dim2x & dim1y = dim2y;
+
+////There should be 3 different targets
+asm alw !samePlace(A_X, A_Y, B_X, B_Y);
+asm alw !samePlace(B_X, B_Y, C_X, C_Y);
+asm alw !samePlace(A_X, A_Y, C_X, C_Y);
+
+
+	
+
+
+
+	

@@ -1,0 +1,151 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+gar ini robotX = 0;
+gar ini robotY = 0;
+
+//define obstacles - hard coded for better performance 
+define  obstacle1X :=1;
+define  obstacle1Y :=1;
+
+define  obstacle2X :=2;
+define  obstacle2Y :=1;
+
+define  obstacle3X :=0;
+define  obstacle3Y :=3;
+
+define  obstacle4X :=3;
+define  obstacle4Y :=3;
+
+define  obstacle5X :=3;
+define  obstacle5Y :=4;
+
+//targets 
+env DimX targetAX;
+env DimY targetAY;
+
+env DimX targetBX;
+env DimY targetBY;
+
+env DimX targetCX;
+env DimY targetCY;
+
+define chargeX := 4;
+define chargeY := 0;
+
+//moving obstacle
+env DimX mX;
+env DimY mY;
+
+asm alw mY = 2;
+
+predicate stayY(DimY dimy):
+ next(dimy) = dimy;
+
+predicate stayX(DimX dimx):
+ next(dimx) = dimx;
+
+predicate stayXY(DimX dimx, DimY dimy):
+ stayX(dimx) & stayY(dimy);
+
+//targets don't move the entire run  
+asm alw stayXY(targetAX, targetAY);
+asm alw stayXY(targetBX, targetBY);
+asm alw stayXY(targetCX, targetCY);
+
+//Targets can't be on obstacles 
+predicate targetNotOnObstacle(DimX targetX, DimY targetY):
+	! (targetX=1 & targetY=1) &	! (targetX=2 & targetY=1) &	! (targetX=0 & targetY=3) &	! (targetX=3 & targetY=3) &	! (targetX=3 & targetY=4) ;	
+
+asm ini targetNotOnObstacle(targetAX, targetAY);
+asm ini targetNotOnObstacle(targetBX, targetBY);
+asm ini targetNotOnObstacle(targetCX, targetCY);
+
+
+predicate moveDistX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+predicate moveDistY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+// Robot moves 1 step or not at all 
+ gar robotMoves:
+  always moveDistX(robotX) & moveDistY(robotY);
+ 
+// M moves 1 step in the same row or not at all
+asm mMoves:
+ always moveDistX(mX) & stayY(mY);
+ 
+//1. Always, sometimes in the future, the robot will visit each of the targets.
+gar alwEv robotX=targetAX & robotY=targetAY;
+gar alwEv robotX=targetBX & robotY=targetBY;
+gar alwEv robotX=targetCX & robotY=targetCY;
+
+//TODO if doesnt work - change to : gar alwEv robotX=0 & robotY=0;
+//2. Whenever the robot visits a target, it should eventually also visit the top left corner.
+define robotIsAtTopLeftCorner := robotX = 0 & robotY = 0;
+define robotIsAtTarget := (robotX = targetAX & robotY = targetAY) | (robotX = targetBX & robotY = targetBY) | (robotX = targetCX & robotY = targetCY) ;
+gar P_becomes_true_After_Q(robotIsAtTarget, robotIsAtTopLeftCorner);
+//
+////3. blocked targets  
+//
+env boolean ABlocked;
+env boolean BBlocked;
+env boolean CBlocked;
+
+//asm alwEv !ABlocked;
+//asm alwEv !BBlocked;
+//asm alwEv !CBlocked;
+//
+//// When a target is blocked, the robot should not visit it. 
+//
+asm ini !(targetAX = 0 & targetAY = 0);
+asm ini !(targetBX = 0 & targetBY = 0);
+asm ini !(targetCX = 0 & targetCY = 0);
+//
+//asm alw ABlocked = true -> !(next(robotX) = targetAX & next(robotY) = targetAY);
+//asm alw BBlocked = true -> !(robotX = targetBX & robotY = targetBY);
+//asm alw CBlocked = true -> !(robotX = targetCX & robotY = targetCY);
+//
+//asm alw (robotX = targetAX & robotY = targetAY) -> next(ABlocked) = ABlocked;  
+//asm alw (robotX = targetBX & robotY = targetBY) -> next(BBlocked) = BBlocked;  
+//asm alw (robotX = targetCX & robotY = targetCY) -> next(CBlocked) = CBlocked;  
+//
+//M visits both ends of the row infinitely often
+asm alwEv mX = 0;
+asm alwEv mX = 4;  
+//
+////The robot should never be covered by the moving obstacle
+//gar alw !(robotX = mX & robotY = mY);
+//
+//The robot can't move to obstacle 
+gar alw !((robotX = obstacle1X & robotY = obstacle1Y)|(robotX = obstacle2X & robotY = obstacle2Y)|(robotX = obstacle3X & robotY = obstacle3Y)|(robotX = obstacle4X & robotY = obstacle4Y)|(robotX = obstacle5X & robotY = obstacle5Y));
+//
+////When the robot loses power it goes to the top right corner for charging and stays there for at least 4 states.
+env boolean robotLostPower;
+define robotIsAtChargingPoint := robotX = 4 & robotY = 0;
+//
+gar P_becomes_true_After_Q(robotLostPower, robotIsAtChargingPoint);
+gar alwEv robotIsAtChargingPoint;
+
+counter chargeCounter(0..4){
+	chargeCounter = 0;
+	reset: !robotIsAtChargingPoint;
+	inc: robotIsAtChargingPoint;
+	overflow: keep;
+}
+
+gar alw (robotIsAtChargingPoint & chargeCounter < 4) -> stayX(robotX) & stayY(robotY);

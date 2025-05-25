@@ -1,0 +1,76 @@
+import "../imports/DwyerPatterns.spectra"
+spec EscapingGuard
+
+define D := 7;
+
+type Dim = Int(0..D);
+type DimSmall = Int(0..(D-1));
+
+sys Dim robotX;
+sys Dim robotY;
+
+env DimSmall obstacleUpX;
+env DimSmall obstacleLeftY;
+
+
+// initial place for the obstacle
+asm ini obstacleUpX = 0;
+asm ini obstacleLeftY = 0;
+
+sys Dim check;
+gar alw check = canMove;
+
+// obstacle movement
+predicate moveDistObstacle(DimSmall pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos); 
+  
+
+asm alw canMove >0 -> obstacleUpX= next(obstacleUpX)  & obstacleLeftY = next(obstacleLeftY);
+
+asm alw (canMove =0) & (obstacleUpX< robotX)  & (obstacleUpX+1< robotX ) -> next(obstacleUpX)= obstacleUpX+1;
+asm alw canMove =0 & obstacleUpX> robotX -> next(obstacleUpX)= obstacleUpX-1;
+asm alw (canMove =0) & (obstacleLeftY< robotY) &  (obstacleLeftY+1 <robotY) -> next(obstacleLeftY)= obstacleLeftY+1;
+asm alw canMove =0 & obstacleLeftY> robotY -> next(obstacleLeftY)= obstacleLeftY-1;
+
+// obstacle can not catch robot
+predicate canNotCatch(Dim posX, Dim posY):
+	(obstacleUpX != posX) | (obstacleLeftY != posY);
+	
+gar alw canNotCatch(robotX, robotY);
+gar alw canNotCatch(robotX-1, robotY);
+gar alw canNotCatch(robotX, robotY-1);
+gar alw canNotCatch(robotX-1, robotY-1);
+
+
+
+// robot can't be on the static obstacle
+predicate canNotVisit(Dim posX, Dim posY):
+	(robotX != posX) | (robotY != posY);
+
+gar alw canNotVisit(2,2);
+gar alw canNotVisit(2,3);
+gar alw canNotVisit(2,4);
+gar alw canNotVisit(2,5);
+
+// movement of the robot
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos); 
+  
+
+counter canMove(0..2){
+	canMove = 0;
+	inc: true;
+	overflow: modulo;
+}
+
+gar alw canMove=0 -> robotX = next(robotX) & robotY = next(robotY);
+gar alw canMove>0 -> moveDist(robotX)  & moveDist(robotY);
+
+
+
+
+

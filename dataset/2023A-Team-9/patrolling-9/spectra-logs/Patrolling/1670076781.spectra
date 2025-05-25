@@ -1,0 +1,123 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+//TODO: complete the specification
+define
+	charging := 		equalLocation(robotX, robotY, 4, 0);
+	robotAtStart := 	robotX = 0 and  robotY = 0;
+	robotOnTarget :=   	equalLocation(robotX, robotY, target1X, target1Y)
+					or 	equalLocation(robotX, robotY, target2X, target2Y)
+					or 	equalLocation(robotX, robotY, target3X, target3Y);
+					
+//Object Declaration
+
+//Targets
+env DimX target1X;
+env DimY target1Y;
+env DimX target2X;
+env DimY target2Y;
+env DimX target3X;
+env DimY target3Y;
+
+//The target locations are random but fixed throughout the whole run
+asm alw wait(target1X, target1Y);
+asm alw wait(target2X, target2Y);
+asm alw wait(target3X, target3Y);
+
+//Obstacles
+env DimX obstacle1X;
+env DimY obstacle1Y;
+env DimX obstacle2X;
+env DimY obstacle2Y;
+env DimX obstacle3X;
+env DimY obstacle3Y;
+env DimX obstacle4X;
+env DimY obstacle4Y;
+env DimX obstacle5X;
+env DimY obstacle5Y;
+
+//Obstacles permanent locations
+asm ini obstacle1X = 1 and obstacle1Y = 1;
+asm ini obstacle2X = 2 and obstacle2Y = 1;
+asm ini obstacle3X = 0 and obstacle3Y = 3;
+asm ini obstacle4X = 3 and obstacle4Y = 3;
+asm ini obstacle5X = 4 and obstacle5Y = 3;
+asm alw wait(obstacle1X, obstacle1Y);
+asm alw wait(obstacle2X, obstacle2Y);
+asm alw wait(obstacle3X, obstacle3Y);
+asm alw wait(obstacle4X, obstacle4Y);
+asm alw wait(obstacle5X, obstacle5Y);
+
+//Moving Obstacles
+env DimX movingObstacleX;
+env DimY movingObstacleY;
+asm ini movingObstacleX = 0;
+asm ini movingObstacleY = 2;
+//Power
+env boolean noPower;
+
+//Blocked targets
+env boolean blocked1;
+env boolean blocked2;
+env boolean blocked3;
+
+gar robotStartAtTopLeft:
+	ini robotAtStart;
+	
+
+gar robotMovesOneStepAtATime:
+	alw moveDistX(robotX) and moveDistY(robotY);
+	
+	
+//robotEventuallyGoesToTargets:
+gar alwEv equalLocation(robotX, robotY, target1X, target1Y);
+gar alwEv equalLocation(robotX, robotY, target2X, target2Y);
+gar alwEv equalLocation(robotX, robotY, target3X, target3Y);
+
+gar MovingObstacleNotCoverRobot:
+	alw !equalLocation(robotX, robotY, movingObstacleX, movingObstacleY);
+
+gar P_becomes_true_After_Q(charging, noPower);
+
+counter countFullCharge(0..4){
+	countFullCharge = 0;
+	reset: !charging;
+	inc: charging;
+	overflow: false;
+}
+
+//Charge for 4 times
+gar alw(countFullCharge < 4 and charging) -> wait(robotX, robotY);
+
+//Robot is never on blocked targets ************************** maybe needs true = next blocked
+gar alw next(blocked1) -> !equalLocation(robotX, robotY, target1X, target1Y);
+gar alw next(blocked1) -> !equalLocation(robotX, robotY, target2X, target2Y);
+gar alw next(blocked1) -> !equalLocation(robotX, robotY, target3X, target3Y);
+
+gar P_becomes_true_After_Q(robotOnTarget, robotAtStart);
+
+predicate wait(DimX dimX, DimY dimY):
+	next(dimX) = dimX and
+	next(dimY) = dimY;
+	
+predicate moveDistX(DimX pos):
+	pos+1 = next(pos) |
+	pos   = next(pos) |
+	pos-1 = next(pos);
+  
+predicate moveDistY(DimY pos):
+	pos+1 = next(pos) |
+	pos   = next(pos) |
+	pos-1 = next(pos);
+	
+predicate equalLocation(DimX oneX, DimY oneY, DimX twoX, DimY twoY):
+	oneX = twoX and oneY = twoY;

@@ -1,0 +1,26 @@
+import "../imports/DwyerPatterns.spectra"
+spec EscapingGuard
+
+define D := 7;
+
+type Dim = Int(0..D);
+
+sys Dim robotX;
+sys Dim robotY;
+
+//module 1 - robot gets to all targets in the correct order
+
+define atTarget1 := robotX = 0 & robotY = 0;
+define atTarget2 := robotX = D & robotY = D;
+define atTarget3 := robotX = 0 & robotY = D;
+
+gar getToTarget1:
+	alwEv atTarget1;
+gar getToTarget2:
+	alwEv atTarget2;
+gar getToTarget3:
+	alwEv atTarget3;
+	
+//guarantee robot gets to targets in correct order
+gar robotVisitsTarget2Between1And3:
+	P_becomes_true_between_Q_and_R(atTarget2, atTarget1, atTarget3);

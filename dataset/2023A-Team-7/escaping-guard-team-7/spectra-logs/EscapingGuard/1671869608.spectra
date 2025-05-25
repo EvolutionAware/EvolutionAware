@@ -1,0 +1,95 @@
+import "../imports/DwyerPatterns.spectra"
+spec EscapingGuard
+
+define D := 7;
+
+type Dim = Int(0..D);
+
+sys Dim robotX;
+sys Dim robotY;
+
+// the positions of guardX and guardY refer to the top left corner of the guard's square figure
+env Dim guardX;
+env Dim guardY;
+
+define
+	atStart := (robotX = D) and (robotY = 0);
+	atObs1 := (robotX = 2) and (robotY = 2);
+	atObs2 := (robotX = 2) and (robotY = 3);
+	atObs3 := (robotX = 2) and (robotY = 4);
+	atObs4 := (robotX = 2) and (robotY = 5);
+	
+	atGuardTopLeft := (robotX = guardX) and (robotY = guardY);
+	atGuardBottomLeft := (robotX = guardX) and (robotY = guardY + 1);
+	atGuardTopRight := (robotX = guardX + 1) and (robotY = guardY);
+	atGuardBottomRight := (robotX = guardX + 1) and (robotY = guardY + 1);
+
+counter turnsCnt(0..2) {
+	// initialize at 0
+	turnsCnt = 0;
+	
+	// increment always
+	inc: turnsCnt < 5;
+	
+	overflow: modulo;
+}
+
+predicate atTarget1(Dim posX, Dim posY):
+	posX = 0 and posY = 0;
+	
+predicate atTarget2(Dim posX, Dim posY):
+	posX = 0 and posY = D;
+	
+predicate atTarget3(Dim posX, Dim posY):
+	posX = D and posY = D;
+
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos); 
+  
+predicate stationaryPos(Dim posX, Dim posY):
+	(posX = next(posX)) and (posY = next(posY));
+
+gar robotMoves:
+  always moveDist(robotX) & moveDist(robotY);
+
+gar robotRespectsEnvironmentTurn:
+	always turnsCnt = 0 -> stationaryPos(robotX, robotY);
+
+asm guardMoves:
+	always moveDist(guardX) & moveDist(guardY);
+	
+asm guardRespectsRobotsTurn:
+	always turnsCnt != 0 -> stationaryPos(guardX, guardY);
+
+gar robotInitAtStart:
+	ini atStart;
+	
+asm guardInitAtTopLeft:
+	ini (guardX = 0) and (guardY = 0);
+
+// robot always eventually visits all targets
+gar visitsTarget1:
+	alwEv atTarget1(robotX, robotY);
+	
+gar visitsTarget3:
+	alwEv atTarget3(robotX, robotY);
+	
+gar visits2Between1And3:
+	P_becomes_true_between_Q_and_R(atTarget2(robotX, robotY), atTarget1(robotX, robotY), atTarget3(robotX, robotY));
+	
+// robot can't go on fixed obstacles
+gar robotAvoidsObstacles:
+	always !atObs1 and !atObs2 and !atObs3 and !atObs4;
+	
+gar robotAvoidsGuard:
+	always !atGuardTopLeft and !atGuardTopRight and !atGuardBottomLeft and !atGuardBottomRight;
+	
+asm guardFollowsRobotOnX:
+	always turnsCnt = 0 and guardX != robotX -> (next(guardX) - robotX < guardX - robotX) or (robotX - next(guardX) < robotX - guardX);
+	
+asm guardFollowsRobotOnY:
+	always turnsCnt = 0 and guardY != robotY -> (next(guardY) - robotY < guardY - robotY) or (robotY - next(guardY) < robotY - guardY);
+
+	

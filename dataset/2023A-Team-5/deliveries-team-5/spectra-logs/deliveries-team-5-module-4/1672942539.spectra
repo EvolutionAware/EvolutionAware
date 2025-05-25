@@ -1,0 +1,45 @@
+import "../imports/DwyerPatterns.spectra"
+spec Module4
+
+
+
+
+define DX := 5;
+define DY := 5;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+type Coord = Int(0..DY);
+
+sys DimX robotX0;
+sys DimY robotY0;
+sys DimX robotX1;
+sys DimY robotY1;
+
+sys boolean wasAtDifferentFloor0;
+sys boolean wasAtDifferentFloor1;
+
+
+
+env DimX targetX0;
+env DimY targetY0;
+env DimX targetX1;
+env DimY targetY1;
+
+
+define atTarget0 :=
+	robotX0 = targetX0 & robotY0 = targetY0;
+
+define atTarget1 :=
+	robotX1 = targetX1 & robotY1 = targetY1;
+
+gar alw robotY0 = DY | robotX0 = 0 -> next(wasAtDifferentFloor0) = wasAtDifferentFloor0;
+gar alw robotY1 = DY | robotX1 = 0 -> next(wasAtDifferentFloor1) = wasAtDifferentFloor1;
+
+gar alw robotY0 != DY & robotX0 != 0 -> (wasAtDifferentFloor0) = true;
+gar alw robotY1 != DY & robotX1 != 0 -> (wasAtDifferentFloor1) = true;
+
+predicate atDifferentFloor(DimY robotY, DimX robotX) : robotY != DY & robotX != 0;
+predicate atGroundFloor(DimY robotY, DimX robotX) : robotY = DY & robotX != 0;
+gar P_becomes_true_before_R(wasAtDifferentFloor0 & robotY0 = DY & robotX0 != 0, atTarget0);
+gar P_becomes_true_before_R(wasAtDifferentFloor1 & robotY1 = DY & robotX1 != 0, atTarget1);

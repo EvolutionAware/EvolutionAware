@@ -1,0 +1,159 @@
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+define D := 7;
+type Dim = Int(0..D);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+env Dim intruderX;
+env Dim intruderY;
+
+// initial places
+gar ini robotX0= 0;
+gar ini robotX1= 7;
+gar ini robotY0= 0;
+gar ini robotY1= 0;
+asm ini intruderY=7;
+
+
+//obstacles
+predicate notOnObstacle(Dim rX, Dim rY, Dim oX, Dim oY):
+	(rX != oX) |
+	(rY != oY) 
+	;
+
+//robot0
+gar alw notOnObstacle(robotX0, robotY0, 2,1);
+gar alw notOnObstacle(robotX0, robotY0, 3,1);
+gar alw notOnObstacle(robotX0, robotY0, 4,1);
+gar alw notOnObstacle(robotX0, robotY0, 5,1);
+//robot1
+gar alw notOnObstacle(robotX1, robotY1, 2,1);
+gar alw notOnObstacle(robotX1, robotY1, 3,1);
+gar alw notOnObstacle(robotX1, robotY1, 4,1);
+gar alw notOnObstacle(robotX1, robotY1, 5,1);
+//intruder
+asm alw notOnObstacle(intruderX, intruderY, 2,1);
+asm alw notOnObstacle(intruderX, intruderY, 3,1);
+asm alw notOnObstacle(intruderX, intruderY, 4,1);
+asm alw notOnObstacle(intruderX, intruderY, 5,1);
+
+// movement of robots and intruder
+predicate moveDist(Dim posX, Dim posY):
+  (posX+1 = next(posX) & posY   = next(posY))| //move right
+  (posX   = next(posX) & posY   = next(posY))| // stay in place
+  (posX-1 = next(posX) & posY   = next(posY))| // move left
+  (posY+1 = next(posY) & posX = next(posX))  | // move up
+  (posY-1 = next(posY) & posX = next(posX));  // move down
+  
+predicate hasMoveDist(Dim posX, Dim posY):
+  (posX+1 = next(posX) & posY   = next(posY))| //move right
+  (posX-1 = next(posX) & posY   = next(posY))| // move left
+  (posY+1 = next(posY) & posX = next(posX))  | // move up
+  (posY-1 = next(posY) & posX = next(posX));  // move down
+
+//robots movement
+gar alw moveDist(robotX0, robotY0);
+gar alw moveDist(robotX1, robotY1);
+
+
+
+// robots can not crash and intruder also can not crash
+gar alw robotX0 != robotX1 | robotY0 != robotY1;
+gar alw robotX0 != intruderX | robotY0 != intruderY;
+gar alw robotX1 != intruderX | robotY1 != intruderY;
+
+
+
+predicate canNotSwitch(Dim posX0, Dim posY0, Dim posX1, Dim posY1):
+	(((posX0 = posX1) & (posY0> posY1 )) -> next(posY0)>next(posY1))
+	& (((posX0 = posX1) & (posY0< posY1 )) -> next(posY0)<next(posY1))
+	& (((posY0 =posY1) & (posX0> posX1)) -> next(posX0)> next(posX1))
+	&(((posY0 =posY1) & (posX0< posX1)) -> next(posX0)< next(posX1));
+
+gar alw canNotSwitch(robotX0, robotY0, robotX1, robotY1);
+gar alw canNotSwitch(robotX0, robotY0, intruderX, intruderY);
+gar alw canNotSwitch(robotX1, robotY1, intruderX, intruderY);
+
+//robot 1 can not move until robot 0 reaches bottom left corner
+counter robo1Stays(0..1){
+	robo1Stays =0;
+	inc: (robotX0=0) & (robotY0=7);
+	overflow: keep;
+}
+
+gar alw robo1Stays=0 -> stayInPlace(robotX1, robotY1);
+
+define
+	atCorner := (intruderX = 0 & intruderY = 0) |
+	 (intruderX = 0 & intruderY = 7)|
+	 (intruderX = 7 & intruderY = 0)|
+	 (intruderX = 7 & intruderY = 7);
+	aboveObs := (intruderY =0) & (intruderX> 1) & (intruderX<6);  
+	rob0close := (intruderX = robotX0 & (intruderY = robotY0+1 | intruderY = robotY0-1)) 
+	| (intruderY = robotY0 & (intruderX = robotX0+1 | intruderX = robotX0-1));
+	rob1close := (intruderX = robotX1 & (intruderY = robotY1+1 | intruderY = robotY1-1)) 
+	| (intruderY = robotY1 & (intruderX = robotX1+1 | intruderX = robotX1-1));
+
+
+
+
+
+counter intruderStays(0..4){
+	intruderStays = 0;
+	inc: (intruderX=next(intruderX)) & (intruderY=next(intruderY));
+	reset: (intruderX!=next(intruderX)) | (intruderY!=next(intruderY));
+	overflow: keep;
+}
+
+
+
+predicate stayInPlace(Dim posX, Dim posY):
+  (posX   = next(posX) & posY   = next(posY));
+
+
+
+
+predicate onEdge(Dim posX, Dim posY):
+	posX =0 | posY=0 | posX=7 | posY=7;
+
+
+
+predicate closeToObstacle(Dim posX, Dim posY):
+	(posY=2 & posX>1 & posX<6)|
+	(posY=1 & posX=6)|
+	(posY=1 & posX=1);	
+
+
+
+// movement of intruder
+// intruder has to stay in place
+asm alw ((atCorner | aboveObs) &  rob0close & rob1close) & intruderStays<4 -> stayInPlace(intruderX, intruderY);     
+//normal behavior 
+asm alw (intruderStays<4) & !((atCorner | aboveObs) &  rob0close & rob1close) ->  moveDist(intruderX, intruderY);
+
+//after 4 consecutive stays
+asm alw intruderStays>=4-> next(intruderY)=7;
+
+// one robot is close to intruder in the middle of the board -> intruder has to run away	
+asm alw rob0close & !rob1close	& intruderStays<4 & !onEdge(intruderX, intruderY) & !closeToObstacle(intruderX, intruderY) -> hasMoveDist(intruderX, intruderY) & (next(intruderX)!=robotX0  | next(intruderY) != robotY0);
+asm alw !rob0close & rob1close	& intruderStays<4 & !onEdge(intruderX, intruderY) & !closeToObstacle(intruderX, intruderY) -> hasMoveDist(intruderX, intruderY) & (next(intruderX)!=robotX1  | next(intruderY) != robotY1);
+
+ 	
+	
+// intruder never crashes into robots
+asm alw next(intruderX) != robotX0 | (next(intruderY) != robotY0);
+asm alw next(intruderX) != robotX1 | (next(intruderY) != robotY1);	
+	
+//need to stay in-place infinite number of times
+asm alwEv intruderStays>=4;	
+	
+	
+	
+gar alwEv robotX1!=7 |  robotY1 !=0;
+	
+asm alw intruderStays>=4 & intruderY=7 -> next(intruderY)=7 & next(intruderX)!= intruderX;	
+	
+	 

@@ -1,0 +1,15 @@
+<record>
+  <index>1672162393471</index>
+  <date>Tue Dec 27 19:33:13 IST 2022</date>
+  <message>TimeStamp-1672162393-Start-SYS_VAR_CORE</message>
+</record>
+<record>
+  <index>1672162393684</index>
+  <date>Tue Dec 27 19:33:13 IST 2022</date>
+  <message>TimeStamp-1672162393-Operation-SYS_VAR_CORE-Buffer-Found guarantees unrealizable core with 5 guarantees, at lines &lt; 43 44 88 84 83 &gt;. See markers in specification file.</message>
+</record>
+<record>
+  <index>1672162393708</index>
+  <date>Tue Dec 27 19:33:13 IST 2022</date>
+  <message>TimeStamp-1672162393-Operation-SYS_VAR_CORE-Buffer-Found 1 unrealizable core system variables.</message>
+</record>

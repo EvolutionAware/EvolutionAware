@@ -1,0 +1,54 @@
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+define D := 7;
+type Dim = Int(0..D);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+//initial positions of two robots
+gar ini robotX0 = 0 & robotY0 = 0;
+gar ini robotX1 = 7 & robotY1 = 0;
+
+env Dim intruderX;
+env Dim intruderY;
+
+type count = Int(0..4);
+env count StaysCounter;
+
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);  
+
+predicate stay(Dim dim):
+	next(dim) = dim;
+	
+predicate notAtObstacles(Dim x, Dim y){
+	!(x = 2 & y = 1) & !(x = 3 & y = 1) & !(x = 4 & y = 1) & !(x = 5 & y = 1)
+}
+
+// Robots' movement	
+gar alw (moveDist(robotX0) & stay(robotY0)) | (moveDist(robotY0) & stay(robotX0)) | (stay(robotX0) & stay(robotY0));
+gar alw (moveDist(robotX1) & stay(robotY1)) | (moveDist(robotY1) & stay(robotX1)) | (stay(robotX1) & stay(robotY1));
+// Robots don't go over obstacles
+gar alw (notAtObstacles(robotX0, robotY0) & notAtObstacles(robotX1, robotY1));
+// Robots don't go on top of each other
+gar alw !(robotX0 = robotX1 & robotY0 = robotY1);
+
+
+// intruder moves, it jumps after staying in place for 4 consecutive states
+asm alw StaysCounter != 4 -> (moveDist(intruderX) & stay(intruderY)) | (moveDist(intruderY) & stay(intruderX)) |
+	(stay(intruderX) & stay(intruderY));
+asm alw StaysCounter = 4 -> next(intruderY) = 7 & !(stay(intruderX) & stay(intruderY));
+
+//make sure intruder isn't at obstacles
+asm alw notAtObstacles(intruderX, intruderY);
+
+//make sure robot and intruder doesn't go on each other
+gar alw !(robotX0 = intruderX & robotY0 = intruderY);
+gar alw !(robotX1 = intruderX & robotY1 = intruderY);
+asm alw !(intruderX = robotX0 & intruderY = robotY0);
+asm alw !(intruderX = robotX1 & intruderY = robotY1);

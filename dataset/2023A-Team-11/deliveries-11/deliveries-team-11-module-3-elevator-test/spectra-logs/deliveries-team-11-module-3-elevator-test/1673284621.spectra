@@ -1,0 +1,38 @@
+import "../imports/DwyerPatterns.spectra"
+// Integration
+
+spec Deliveries
+
+define DX := 5;
+define DY := 5;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+type Coord = Int(0..DY);
+
+sys DimX robotX0;
+sys DimY robotY0;
+sys DimX robotX1;
+sys DimY robotY1;
+
+env DimX p0X;
+env DimY p0Y;
+env DimX p1X;
+env DimY p1Y;
+
+define	r0AtPack := robotX0 = p0X & robotY0 = p0Y;
+		r1AtPack := robotX1 = p1X & robotY1 = p1Y;
+
+//start up elevator test
+sys boolean r1BackToGound;
+sys boolean r2BackToGound;
+gar ini r1BackToGound = false;
+gar ini r2BackToGound = false;
+
+gar alw next(robotY0) = 5 & robotY0 < 5 -> next(r1BackToGound) = true;
+gar alw next(robotY1) = 5 & robotY1 < 5 -> next(r2BackToGound) = true;
+
+gar alw !(next(robotY1) = 5 & robotY1 < 5) -> next(r2BackToGound) = r2BackToGound;
+gar alw !(next(robotY0) = 5 & robotY0 < 5) -> next(r1BackToGound) = r1BackToGound;
+
+gar alw !r1BackToGound | !r2BackToGound -> !r0AtPack & !r1AtPack;

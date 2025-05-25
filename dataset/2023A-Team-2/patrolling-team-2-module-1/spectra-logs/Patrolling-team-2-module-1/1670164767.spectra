@@ -1,0 +1,113 @@
+import "../imports/DwyerPatterns.spectra"
+//Robot
+
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+//TODO: complete the specification
+
+// Declaring the targets
+env DimX A_X;
+env DimY A_Y;
+env DimX B_X;
+env DimY B_Y;
+env DimX C_X;
+env DimY C_Y;
+
+//possible next steps of the robot
+define robotMoves := (robotX+1 = next(robotX)) | (robotX-1 = next(robotX)) | (robotY+1 = next(robotY)) | (robotY-1 = next(robotY));
+
+
+// Robot reaches the target
+define 
+	atA := robotX = A_X & robotY = A_Y;
+	atB := robotX = B_X & robotY = B_Y;
+	atC := robotX = C_X & robotY = C_Y;
+	atLeftCorner := robotX = 0 & robotY = 0;
+	
+
+//**** obstcles should not be on targets **** //
+	
+//req 1
+// Always, sometimes in the future, the robot will visit each of the targets
+gar alwEv atA;
+gar alwEv atB;
+gar alwEv atC; 
+
+//Targets should not change location during a run
+asm alw (next(A_X) = A_X) & (next(A_Y) = A_Y);
+asm alw (next(B_X) = B_X) & (next(B_Y) = B_Y);
+asm alw (next(C_X) = C_X) & (next(C_Y) = C_Y);
+
+
+// req 2
+//Whenever the robot visits a target, it should eventually also visit the top left corner.
+gar alwEv (atA | atB | atC) -> atLeftCorner;
+
+//req 3
+//Target may always be blocked (turned from green to red) for a finite number of states and then eventually unblocked
+
+env boolean BlockedA;
+env boolean BlockedB;
+env boolean BlockedC;
+
+asm alwEv !BlockedA;
+asm alwEv !BlockedB;
+asm alwEv !BlockedC;
+
+//If target is blocked, the robot should not visit it
+gar alw next(BlockedA) = true implies !atA;
+gar alw next(BlockedB) = true implies !atB;
+gar alw next(BlockedC) = true implies !atC;
+
+
+// req 4
+env DimX mostLeftX;
+env DimX mostRightX;
+asm mostLeftX = 0;
+asm mostRightX = 4;
+
+env DimX movingObstcle_X;
+env DimY movingObstcle_Y;
+
+//There is a sliding obstacle in the middle row
+asm alw movingObstcle_Y = 2;
+
+// The sliding abstacle visits both ends of the row infinitely often
+asm alwEv movingObstcle_X = mostLeftX;
+asm alwEv movingObstcle_X = mostRightX;
+  
+//possible next steps of the moving obstacle
+define movingObstaclesMoves := (movingObstcle_X+1 = next(movingObstcle_X)) | (movingObstcle_X = next(movingObstcle_X)) | (movingObstcle_X-1 = next(movingObstcle_X));
+
+//The robot should guarantee to never be covered by the moving obstacle. 
+gar alw (robotX != movingObstcle_X) & (robotY != movingObstcle_Y);
+	
+
+// req 5
+//When the robot lose power he should go to the charger for 4 states
+env boolean lostPower;
+env DimX chargerX;
+env DimY chargerY;
+asm alw chargerX = 4;
+asm alw chargerY = 0;
+
+define 	
+	atCharger := (robotX = chargerX) & (robotY = chargerY);
+
+
+///*************** check syntax ******************////////
+gar alwEv atCharger;
+gar trig [true]*[lostPower] |=> [true]([atCharger]){4,};
+
+
+	
+	

@@ -1,0 +1,294 @@
+/* 
+
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+
+// 8X8 grid 
+define D := 7;
+type Dim = Int(0..D);
+
+// two robots R0 and R1
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+// moving intruder D
+env Dim intruderX;
+env Dim intruderY;
+
+// Initially, the two robots R0 and R1 are located at the top left and right corners respectively. 
+gar ini robotX0 = 0 & robotY0= 0;
+gar ini robotX1 = 7 & robotY1= 0;
+
+//check ---
+//never move diagonally 
+gar alw ((next(robotX0) = robotX0 + 1 & next(robotY0) = robotY0) | (next(robotX0) = robotX0 - 1 & next(robotY0) = robotY0) | (next(robotX0) = robotX0 & next(robotY0) = robotY0 + 1) | (next(robotX0) = robotX0 & next(robotY0) = robotY0 - 1) | (next(robotX0) = robotX0 & next(robotY0) = robotY0)); 
+gar alw ((next(robotX1) = robotX1 + 1 & next(robotY1) = robotY1) | (next(robotX1) = robotX1 - 1 & next(robotY1) = robotY1) | (next(robotX1) = robotX1 & next(robotY1) = robotY1 + 1) | (next(robotX1) = robotX1 & next(robotY1) = robotY1 - 1) | next(robotX1) = robotX1 & next(robotY1) = robotY1);
+
+//A moving intruder (D) enters the grid from a random cell at the bottom row.  
+asm ini intruderY = 7;
+//java todo - pass random place for intruderX in init
+
+//In each state, the intruder may stay in place or move to an empty adjacent cell, but it never moves diagonally. 
+asm alw (intruderStaysCounter = 3 | (next(intruderX) = intruderX + 1 & next(intruderY) = intruderY) | (next(intruderX) = intruderX - 1 & next(intruderY) = intruderY) | (next(intruderX) = intruderX & next(intruderY) = intruderY + 1) | (next(intruderX) = intruderX & next(intruderY) = intruderY - 1) | next(intruderX) = intruderX & next(intruderY) = intruderY);
+
+predicate samePlace(Dim dim0x, Dim dim0y, Dim dim1x, Dim dim1y):
+	dim0x = dim1x & dim0y = dim1y;
+	
+//The robots cannot go on top of each other.
+gar !samePlace(robotX0, robotY0, robotX1, robotY1);
+
+//They also cannot go on top of the intruder.
+gar !samePlace(robotX0, robotY0, intruderX, intruderY);
+gar !samePlace(robotX1, robotY1, intruderX, intruderY);
+
+//If a robot is horizontally or vertically adjacent to the intruder, the intruder must try to move away from it.
+//Only if the intruder cannot move away from the adjacent robot (for example because some adjacent cells are not empty), it stays in the same cell.
+
+		//robot0 adjacent options
+define  intruderLeftToRobot0 := (intruderX = robotX0 -1 & intruderY = robotY0);
+		intruderRightToRobot0 := (intruderX = robotX0 +1 & intruderY = robotY0);
+		intruderAboveRobot0 := (intruderX = robotX0 & intruderY = robotY0 -1);
+		intruderDownRobot0 := (intruderX = robotX0 & intruderY = robotY0 +1);
+		
+		//robot1 adjacent options
+		intruderLeftToRobot1 := (intruderX = robotX1 -1 & intruderY = robotY1);
+		intruderRightToRobot1 := (intruderX = robotX1 +1 & intruderY = robotY1);
+		intruderAboveRobot1 := (intruderX = robotX1 & intruderY = robotY1 -1);
+		intruderDownRobot1 := (intruderX = robotX1 & intruderY = robotY1 +1);
+		
+		//intruder optional moves for escaping adjacent robot
+		intruderGoLeft := next(intruderX) = intruderX - 1 & next(intruderY) = intruderY;
+		intruderGoRight := next(intruderX) = intruderX + 1 & next(intruderY) = intruderY;
+		intruderGoUp := next(intruderX) = intruderX & next(intruderY) = intruderY - 1;
+		intruderGoDown := next(intruderX) = intruderX & next(intruderY) = intruderY + 1;
+		intruderStays := next(intruderX) = intruderX & next(intruderY) = intruderY;
+
+
+sys boolean intruderCanGoUp;
+sys boolean intruderCanGoDown;
+sys boolean intruderCanGoRight;
+sys boolean intruderCanGoLeft;
+
+//check if intruder can escape or is stuck, and update booleans 
+gar alw intruderY != 0 & !(intruderX = robotX0 & intruderY = robotY0+1) & !(intruderX = robotX1 & intruderY = robotY1+1) & !(intruderY = 2 & intruderX >= 2 & intruderX <= 5) -> intruderCanGoUp = true;
+gar alw !(intruderY != 0 & !(intruderX = robotX0 & intruderY = robotY0+1) & !(intruderX = robotX1 & intruderY = robotY1+1) & !(intruderY = 2 & intruderX >= 2 & intruderX <= 5)) -> intruderCanGoUp = false;
+
+gar alw intruderY != 7 & !(intruderX = robotX0 & intruderY = robotY0-1) & !(intruderX = robotX1 & intruderY = robotY1-1) & !(intruderY = 0 & intruderX >= 2 & intruderX <= 5) -> intruderCanGoDown = true;
+gar alw !(intruderY != 7 & !(intruderX = robotX0 & intruderY = robotY0-1) & !(intruderX = robotX1 & intruderY = robotY1-1) & !(intruderY = 0 & intruderX >= 2 & intruderX <= 5)) -> intruderCanGoDown = false;
+
+gar alw intruderX != 0 & !(intruderX = robotX0+1 & intruderY = robotY0) & !(intruderX = robotX1+1 & intruderY = robotY1) & !(intruderX = 6 & intruderY = 1) -> intruderCanGoLeft = true;
+gar alw !(intruderX != 0 & !(intruderX = robotX0+1 & intruderY = robotY0) & !(intruderX = robotX1+1 & intruderY = robotY1) & !(intruderX = 6 & intruderY = 1)) -> intruderCanGoLeft = false;
+
+gar alw intruderX != 0 & !(intruderX = robotX0-1 & intruderY = robotY0) & !(intruderX = robotX1-1 & intruderY = robotY1) & !(intruderX = 1 & intruderY = 1) -> intruderCanGoRight = true;
+gar alw !(intruderX != 0 & !(intruderX = robotX0-1 & intruderY = robotY0) & !(intruderX = robotX1-1 & intruderY = robotY1) & !(intruderX = 1 & intruderY = 1)) -> intruderCanGoRight = false;
+
+define leftIntruderCanEscape := intruderCanGoUp | intruderCanGoDown | intruderCanGoLeft;
+	   rightIntruderCanEscape := intruderCanGoUp | intruderCanGoDown | intruderCanGoRight;
+	   upIntruderCanEscape := intruderCanGoRight | intruderCanGoUp | intruderCanGoLeft;
+	   downIntruderCanEscape := intruderCanGoRight | intruderCanGoDown | intruderCanGoLeft;
+
+
+//intruder needs to run from adjacent robot0 
+asm alw intruderLeftToRobot0 & leftIntruderCanEscape implies intruderGoLeft | intruderGoUp | intruderGoDown;
+asm alw intruderLeftToRobot0 & !leftIntruderCanEscape implies intruderStays;
+
+asm alw intruderRightToRobot0 & rightIntruderCanEscape implies intruderGoRight | intruderGoUp | intruderGoDown;
+asm alw intruderRightToRobot0 & !rightIntruderCanEscape implies intruderStays;
+
+asm alw intruderAboveRobot0 & upIntruderCanEscape implies intruderGoLeft | intruderGoRight | intruderGoUp;
+asm alw intruderAboveRobot0 & !upIntruderCanEscape implies intruderStays;
+
+asm alw intruderDownRobot0 & downIntruderCanEscape implies intruderGoLeft | intruderGoRight | intruderGoDown;
+asm alw intruderDownRobot0 & !downIntruderCanEscape implies intruderStays;
+
+//intruder needs to run from adjacent robot1
+asm alw intruderLeftToRobot1 & leftIntruderCanEscape implies intruderGoLeft | intruderGoUp | intruderGoDown;
+asm alw intruderLeftToRobot1 & !leftIntruderCanEscape implies intruderStays;
+
+asm alw intruderRightToRobot1 & rightIntruderCanEscape implies intruderGoRight | intruderGoUp | intruderGoDown;
+asm alw intruderRightToRobot1 & !rightIntruderCanEscape implies intruderStays;
+
+asm alw intruderAboveRobot1 & upIntruderCanEscape implies intruderGoLeft | intruderGoRight | intruderGoUp;
+asm alw intruderAboveRobot1 & !upIntruderCanEscape implies intruderStays;
+
+asm alw intruderDownRobot1 & downIntruderCanEscape implies intruderGoLeft | intruderGoRight | intruderGoDown;
+asm alw intruderDownRobot1 & !downIntruderCanEscape implies intruderStays;
+
+
+//type dimCounter = Int(0..4);
+//env dimCounter intruderMoves;
+//asm ini intruderMoves = 0;
+
+//asm alw intruderMoves = 0 -> next(intruderMoves) = 1;
+//asm alw intruderMoves = 1 -> next(intruderMoves) = 2;
+//asm alw intruderMoves = 2 -> next(intruderMoves) = 3;
+//asm alw intruderMoves = 3 -> next(intruderMoves) = 0;
+
+//asm alw intruderMoves = 3 implies intruderY = 7;
+//java todo - ask for intruderMoves from spectra to java, and if =3 then randomize intruderX and send it to spectra
+
+counter intruderStaysCounter(0..3){
+	intruderStaysCounter = 0;
+	reset: intruderX != next(intruderX) | intruderY != next(intruderY);
+	inc: next(intruderX)=intruderX & next(intruderY)=intruderY;
+	overflow: false; 
+}
+
+//If and when the intruder stays in the same cell for 4 consecutive states it disappears and immediately appears again in a random cell at the bottom row. 
+asm alw intruderStaysCounter = 3 implies intruderY = 7;
+
+//In every infinite run, the intruder must stay in place for 4 consecutive states infinitely many times.
+asm alwEv intruderStaysCounter = 3;
+
+//define shouldStay := false;
+//env boolean shouldStay;
+//asm ini shouldStay = false;
+///// ****java todo -  make shouldStay be 4 times true in a row and the 5th false ************ ////
+//asm alw shouldStay = true implies intruderStays; 
+
+
+// At the beginning of the run, the robot in the top right corner must not move before the robot from the top left corner visits the bottom left corner.
+define robot1Stays := next(robotX1) = robotX1 & next(robotY1) = robotY1;
+	   robot0AtBottomLeftCorner := robotX0 = 0 & robotY0 = 7;
+gar P_becomes_true_before_R(robot1Stays,robot0AtBottomLeftCorner);		
+
+//Black cells denote cells that the robots and the intruder must never visit. 
+gar alw !samePlace(robotX0, robotY0, 2, 1);
+gar alw !samePlace(robotX0, robotY0, 3, 1);
+gar alw !samePlace(robotX0, robotY0, 4, 1);
+gar alw !samePlace(robotX0, robotY0, 5, 1);
+gar alw !samePlace(robotX1, robotY1, 2, 1);
+gar alw !samePlace(robotX1, robotY1, 3, 1);
+gar alw !samePlace(robotX1, robotY1, 4, 1);
+gar alw !samePlace(robotX1, robotY1, 5, 1);
+asm alw !samePlace(intruderX, intruderY, 2, 1);
+asm alw !samePlace(intruderX, intruderY, 3, 1);
+asm alw !samePlace(intruderX, intruderY, 4, 1);
+asm alw !samePlace(intruderX, intruderY, 5, 1);
+
+*/
+
+
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+define D := 7;
+type Dim = Int(0..D);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+env Dim intruderX;
+env Dim intruderY;
+
+//Initially, the two robots R0 and R1 are located at the top left and right corners respectively. 
+gar ini robotX0 = 0 & robotY0 = 0;
+gar ini robotX1 = 7 & robotY1 = 0;
+
+asm ini intruderY= 7;
+
+
+predicate realMove(Dim pos):
+  pos+1 = next(pos) | pos-1 = next(pos);
+  
+predicate stay(Dim pos):
+  pos = next(pos);
+
+
+
+//never move diagonally
+gar alw (realMove(robotX0) & stay(robotY0)) | (stay(robotX0) & realMove(robotY0)) | (stay(robotX0) & stay(robotY0));
+gar alw (realMove(robotX1) & stay(robotY1)) | (stay(robotX1) & realMove(robotY1)) | (stay(robotX1) & stay(robotY1));
+asm alw intruderStaysCounter1 =3 | ((realMove(intruderX) & stay(intruderY)) | (stay(intruderX) & realMove(intruderY)) | (stay(intruderX) & stay(intruderY))); // TODO- add counter=4, intruder can jump
+
+//asm intruderStaysCounter1 =3 -> next(intruderX) != (intruderX) | next(intruderY) != (intruderY);
+asm alw intruderStaysCounter1 =3 -> next(intruderX) != intruderX | next(intruderY) != intruderY;
+
+gar alw !(realMove(robotX0) & realMove(robotY0));
+gar alw !(realMove(robotX1) & realMove(robotY1));
+asm alw !(realMove(intruderX) & realMove(intruderY));
+
+
+// The robots cannot go on top of each other
+gar alw !(robotX0 = robotX1 & robotY0 = robotY1);
+
+// The robots also cannot go on top of the intruder
+gar alw !(robotX0 = intruderX & robotY0 = intruderY);
+gar alw !(robotX1 = intruderX & robotY1 = intruderY);
+
+// The robot in the top right corner must not move before the robot from the top left corner visits the bottom left corner.
+sys boolean robot0VisitBottomLeftCorner;
+gar ini robot0VisitBottomLeftCorner = false;
+gar robotX0 = 0 & robotY0 = 7 -> robot0VisitBottomLeftCorner=true;
+gar alw robot0VisitBottomLeftCorner= false -> next(robotX1) = 7 & next(robotY1) = 0;
+gar alwEv robot0VisitBottomLeftCorner = true;
+
+
+// Black cells denote cells that the robots and the intruder must never visit
+gar alw !(robotX0 = 2 & robotY0 = 1);
+gar alw !(robotX0 = 3 & robotY0 = 1);
+gar alw !(robotX0 = 4 & robotY0 = 1);
+gar alw !(robotX0 = 5 & robotY0 = 1);
+gar alw !(robotX1 = 2 & robotY1 = 1);
+gar alw !(robotX1 = 3 & robotY1 = 1);
+gar alw !(robotX1 = 4 & robotY1 = 1);
+gar alw !(robotX1 = 5 & robotY1 = 1);
+
+// If a robot is horizontally or vertically adjacent to the intruder, the intruder must try to move away from it.
+sys boolean intruderCanMoveUp;
+gar alw intruderY != 0 & !(intruderX = robotX0 & intruderY = robotY0+1) & !(intruderX = robotX1 & intruderY = robotY1+1) & !(intruderY = 2 & intruderX >= 2 & intruderX <= 5) -> intruderCanMoveUp = true;
+gar alw !(intruderY != 0 & !(intruderX = robotX0 & intruderY = robotY0+1) & !(intruderX = robotX1 & intruderY = robotY1+1) & !(intruderY = 2 & intruderX >= 2 & intruderX <= 5)) -> intruderCanMoveUp = false;
+
+
+sys boolean intruderCanMoveDown;
+gar alw intruderY != 7 & !(intruderX = robotX0 & intruderY = robotY0-1) & !(intruderX = robotX1 & intruderY = robotY1-1) & !(intruderY = 0 & intruderX >= 2 & intruderX <= 5) -> intruderCanMoveDown = true;
+gar alw !(intruderY != 7 & !(intruderX = robotX0 & intruderY = robotY0-1) & !(intruderX = robotX1 & intruderY = robotY1-1) & !(intruderY = 0 & intruderX >= 2 & intruderX <= 5)) -> intruderCanMoveDown = false;
+
+
+sys boolean intruderCanMoveLeft;
+gar alw intruderX != 0 & !(intruderX = robotX0+1 & intruderY = robotY0) & !(intruderX = robotX1+1 & intruderY = robotY1) & !(intruderX = 6 & intruderY = 1) -> intruderCanMoveLeft = true;
+gar alw !(intruderX != 0 & !(intruderX = robotX0+1 & intruderY = robotY0) & !(intruderX = robotX1+1 & intruderY = robotY1) & !(intruderX = 6 & intruderY = 1)) -> intruderCanMoveLeft = false;
+
+
+sys boolean intruderCanMoveRight;
+gar alw intruderX != 0 & !(intruderX = robotX0-1 & intruderY = robotY0) & !(intruderX = robotX1-1 & intruderY = robotY1) & !(intruderX = 1 & intruderY = 1) -> intruderCanMoveRight = true;
+gar alw !(intruderX != 0 & !(intruderX = robotX0-1 & intruderY = robotY0) & !(intruderX = robotX1-1 & intruderY = robotY1) & !(intruderX = 1 & intruderY = 1)) -> intruderCanMoveRight = false;
+
+
+
+// robot0 is on the right and the intruder can escape
+asm alw robotX0 = intruderX+1 & robotY0 = intruderY & (intruderCanMoveUp|intruderCanMoveDown|intruderCanMoveLeft|intruderCanMoveRight) -> realMove(intruderX) | realMove(intruderY);
+// robot0 is on the left and the intruder can escape
+asm alw robotX0 = intruderX-1 & robotY0 = intruderY & (intruderCanMoveUp|intruderCanMoveDown|intruderCanMoveLeft|intruderCanMoveRight) -> realMove(intruderX) | realMove(intruderY);
+// robot0 is above and the intruder can escape
+asm alw robotX0 = intruderX & robotY0 = intruderY-1 & (intruderCanMoveUp|intruderCanMoveDown|intruderCanMoveLeft|intruderCanMoveRight) -> realMove(intruderX) | realMove(intruderY);
+// robot0 is under and the intruder can escape
+asm alw robotX0 = intruderX & robotY0 = intruderY+1 & (intruderCanMoveUp|intruderCanMoveDown|intruderCanMoveLeft|intruderCanMoveRight) -> realMove(intruderX) | realMove(intruderY);
+
+
+
+// In every infinite run, the intruder must stay in place for 4 consecutive states infinitely many times.
+//counter intruderStaysCounter2(0..3){
+//	intruderStaysCounter2 = 0;
+//	reset: intruderCanMoveUp | intruderCanMoveDown | intruderCanMoveLeft | intruderCanMoveRight;
+//	inc: !intruderCanMoveUp & !intruderCanMoveDown & !intruderCanMoveLeft & !intruderCanMoveRight;
+//	overflow: false; 
+//}
+//
+//asm alwEv intruderStaysCounter2 = 4;
+
+
+
+counter intruderStaysCounter1(0..3){
+	intruderStaysCounter1 = 0;
+	reset: intruderX != next(intruderX) | intruderY != next(intruderY);
+	inc: intruderX = next(intruderX) & intruderY = next(intruderY);
+	overflow: false; 
+}
+asm alwEv intruderStaysCounter1 = 3;
+
+//
+//gar alw intruderStaysCounter = 3 -> intruderX != next(intruderX) | intruderY != next(intruderY);

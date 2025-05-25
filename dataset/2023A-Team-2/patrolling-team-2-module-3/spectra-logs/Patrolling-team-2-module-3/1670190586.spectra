@@ -1,0 +1,117 @@
+import "../imports/DwyerPatterns.spectra"
+//Avoiding obstacles (fixed obstacles and moving obstacle)
+
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+gar ini robotX = 0;
+gar ini robotY = 0;
+
+
+// Declaring the obstacles 
+env DimX obstacle1X;
+env DimY obstacle1Y;
+
+env DimX obstacle2X;
+env DimY obstacle2Y;
+
+env DimX obstacle3X;
+env DimY obstacle3Y;
+
+env DimX obstacle4X;
+env DimY obstacle4Y;
+
+env DimX obstacle5X;
+env DimY obstacle5Y;
+
+asm ini obstacle1X = 1;
+asm ini obstacle1Y = 1;
+
+asm ini obstacle2X = 2;
+asm ini obstacle2Y = 1;
+
+asm ini obstacle3X = 0;
+asm ini obstacle3Y = 3;
+
+asm ini obstacle4X = 3;
+asm ini obstacle4Y = 3;
+
+asm ini obstacle5X = 3;
+asm ini obstacle5Y = 4;
+
+//gar obstacle1X = 1;
+//gar obstacle1Y = 1;
+//
+//gar obstacle2X = 2;
+//gar obstacle2Y = 1;
+//
+//gar obstacle3X = 0;
+//gar obstacle3Y = 3;
+//
+//gar obstacle4X = 3;
+//gar obstacle4Y = 3;
+//
+//gar obstacle5X = 3;
+//gar obstacle5Y = 4;
+
+env DimX movingObstcle_X;
+env DimY movingObstcle_Y;
+
+asm ini movingObstcle_X = 0;
+asm ini movingObstcle_Y = 2;
+
+//Declaring most left and most right
+env DimX mostLeftX;
+env DimX mostRightX;
+
+asm mostLeftX = 0;
+asm mostRightX = 4;
+
+// obstacles don't move
+asm alw (next(obstacle1X) = obstacle1X) & (next(obstacle1Y) = obstacle1Y);
+asm alw (next(obstacle2X) = obstacle2X) & (next(obstacle2Y) = obstacle2Y);
+asm alw (next(obstacle3X) = obstacle3X) & (next(obstacle3Y) = obstacle3Y);
+asm alw (next(obstacle4X) = obstacle4X) & (next(obstacle4Y) = obstacle4Y);
+asm alw (next(obstacle5X) = obstacle5X) & (next(obstacle5Y) = obstacle5Y);
+
+//possible next steps of the robot
+predicate moveDistX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+predicate moveDistY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+// robot should not thouch the obstacles
+asm alw robotX != obstacle1X & robotY != obstacle1Y;
+asm alw robotX != obstacle2X & robotY != obstacle2Y;
+asm alw robotX != obstacle3X & robotY != obstacle3Y;
+asm alw robotX != obstacle4X & robotY != obstacle4Y;
+asm alw robotX != obstacle5X & robotY != obstacle5Y;
+
+//possible next steps of the moving obstacle
+asm movingObstaclesMoves:
+ always moveDistX(movingObstcle_X) & next(movingObstcle_Y) = movingObstcle_Y;
+
+// The sliding abstacle visits both ends of the row infinitely often
+asm alwEv movingObstcle_X = mostLeftX & movingObstcle_Y = 2;
+asm alwEv movingObstcle_X = mostRightX & movingObstcle_Y = 2;
+  
+
+//The robot should guarantee to never be covered by the moving obstacle. 
+asm alw !(robotX = movingObstcle_X & robotY != movingObstcle_Y);
+
+
+
+	

@@ -1,0 +1,73 @@
+import "../imports/DwyerPatterns.spectra"
+spec EscapingGuard
+/* This specification responsible for the robot and the moving obstacle movement. */
+define D := 7;
+
+type Dim = Int(0..D);
+
+sys Dim robotX;
+sys Dim robotY;
+
+/* We will define the robot location as the top left square of it. */
+env Dim obsXL;
+env Dim obsYT;
+
+/* ---------------robot movement--------------- */
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+gar robotAlwaysMove: alw (moveDist(robotX) & moveDist(robotY));
+gar ini robotX = 7 and robotY = 0;
+/* ---------------obstacle movement--------------- */
+asm ini obsXL = 4 and obsYT = 1;
+
+asm obsAlwaysMove: alw (moveDist(obsXL) & moveDist(obsYT));
+predicate obsRespondsToRob(Dim robotX, Dim robotY, Dim obsXL, Dim obsYT):
+	(robotX < obsXL -> (next(obsXL) <= obsXL)) and 
+	(robotX > obsXL -> (next(obsXL) >= obsXL)) and
+	(robotY < obsYT -> (next(obsYT) <= obsYT)) and
+	(robotY > obsYT -> (next(obsYT) >= obsYT));
+
+asm alw obsRespondsToRob(robotX, robotY, obsXL, obsYT);
+
+counter count(1..2) {
+	count = 1;
+	inc: count < 3;
+	overflow: modulo;
+}
+
+asm obsMovesSlower: alw (count < 2) -> (next(obsXL) = obsXL) and (next(obsYT) = obsYT);
+
+/* ---------------No collision--------------- */
+predicate noCollision(Dim robotX, Dim robotY, Dim obsXL, Dim obsYT):
+	(robotX = obsXL or robotX = obsXL+1) -> (robotY != obsYT and robotY != obsYT+1); 
+	
+
+gar alw noCollision(robotX, robotY, obsXL, obsYT);
+
+/* defining targets locations. */
+define atT1 := robotX = 0 and robotY = 0;
+		atT2 := robotX  = 7 and robotY = 7;
+		atT3 := robotX = 0 and robotY = 7;
+
+
+/* robot doesn't hit obstacles */
+predicate robotNotOnObstacles(Dim robX, Dim robY):
+	robX = 2 -> (robY != 2 and robY != 3 and robY != 4 and robY != 5);
+gar alw robotNotOnObstacles(robotX, robotY);
+
+
+/* The robot needs to start at point (7,0) */
+gar ini robotX = 7 and robotY = 0;
+//
+/* The robot must visit infinitely often T1, T2, T3 */
+gar alwEv atT1;
+//gar alwEv atT2;
+//gar S_responds_to_P_globally(atT3, atT1);
+//gar trig [atT1] |=> ([atT3=false]*[atT2]);
+
+asm alwEv obsXL != 0 and obsYT != 0;
+	
+

@@ -1,0 +1,53 @@
+import "../imports/DwyerPatterns.spectra"
+// robot is going to the charger 
+
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+gar ini robotX = 0;
+gar ini robotY = 0;
+
+// charger
+define
+	chargeX := 4;
+	chargeY := 0;
+	
+//possible next steps of the robot
+predicate moveDistX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+predicate moveDistY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+  // possible next steps of the robot  
+ gar robotMoves:
+  always moveDistX(robotX) & moveDistY(robotY);
+  
+ //charger
+env boolean robotLostPower;
+define robotIsAtChargingPoint := robotX = 4 & robotY = 0;
+
+gar S_responds_to_P_globally(robotLostPower,robotIsAtChargingPoint);
+
+
+counter chargeCounter(0..4){
+	chargeCounter = 0;
+	inc: robotIsAtChargingPoint;
+	reset: !robotIsAtChargingPoint;
+	overflow: false;
+}
+
+gar alw (robotIsAtChargingPoint & chargeCounter < 4) -> (next(robotX) = robotX & next(robotY) = robotY);
+

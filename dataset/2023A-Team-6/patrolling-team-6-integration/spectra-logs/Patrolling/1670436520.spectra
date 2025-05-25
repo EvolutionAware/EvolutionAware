@@ -1,0 +1,240 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+//module 1 part
+env DimX targetAX;
+env DimY targetAY;
+env boolean Agreen;
+
+env DimX targetBX;
+env DimY targetBY;
+env boolean Bgreen;
+
+env DimX targetCX;
+env DimY targetCY;
+env boolean Cgreen;
+
+define atA := (robotX = targetAX) & (robotY = targetAY);
+define atB := (robotX = targetBX) & (robotY = targetBY);
+define atC := (robotX = targetCX) & (robotY = targetCY);
+define atTopLeft := (robotX = 0) & (robotY = 0);
+
+
+//guarantees to always visit each target
+
+gar eventuallyVisitTargetA:
+	alwEv atA;
+	
+gar eventuallyVisitTargetB:
+	alwEv atB;
+	
+gar eventuallyVisitTargetC:
+	alwEv atC;
+
+//guarantee to never visit red targets
+gar neverAtAWhenRed:
+	alw !(atA & !Agreen);
+	
+gar neverAtBWhenRed:
+	alw !(atB & !Bgreen);
+	
+gar neverAtCWhenRed:
+	alw !(atC & !Cgreen);
+
+//guarantee to visit top left corner between targets
+gar visitTopLeftAfterA:
+	trig [true]*[atA] |=> [!atA]*[atTopLeft];
+
+gar visitTopLeftAfterB:
+	trig [true]*[atB] |=> [!atB]*[atTopLeft];
+	
+gar visitTopLeftAfterC:
+	trig [true]*[atC] |=> [!atC]*[atTopLeft];
+
+
+//assume that targets eventually get unblocked
+asm alwEv Agreen;
+asm alwEv Bgreen;
+asm alwEv Cgreen;
+
+//assume that targets don't move
+asm targetAStaysInPlace:
+	alw (targetAX = next(targetAX)) & (targetAY = next(targetAY));
+
+asm targetBStaysInPlace:
+	alw (targetBX = next(targetBX)) & (targetBY = next(targetBY));
+	
+asm targetCStaysInPlace:
+	alw (targetCX = next(targetCX)) & (targetCY = next(targetCY));
+	
+//assume that targets are on different spaces
+asm targetANotOntargetB:
+	alw (targetAX != targetBX) | (targetAY != targetBY);
+
+asm targetANotOntargetC:
+	alw (targetAX != targetCX) | (targetAY != targetCY);
+	
+asm targetCNotOntargetB:
+	alw (targetCX != targetBX) | (targetCY != targetBY);
+
+//module 2 part
+
+//these arrays will be where the constant obstacles are
+/*
+env DimX[5] obstaclesX;
+env DimY[5] obstaclesY;
+*/
+//these will be the locations of the moving obstacle
+env DimX MX;
+env DimY MY;
+
+
+predicate moveDistX(DimX pos):
+	pos+1= next(pos) | pos= next(pos) | pos-1= next(pos);
+
+predicate moveDistY(DimY pos):
+	pos+1= next(pos) | pos= next(pos) | pos-1= next(pos);
+	
+//guarantee the robot only moves one step at a time
+gar robotMoves:
+	alw moveDistX(robotX) & moveDistY(robotY);
+	
+//guarantee the robot never touches obstacles
+gar robotDoesntTouchObstacles:
+	alw ((1 != robotX) | (1 != robotY)) &
+	((3 != robotX) | (3 != robotY)) &
+	((2 != robotX) | (1 != robotY)) &
+	((0 != robotX) | (3 != robotY)) &
+	((3 != robotX) | (4 != robotY));
+	
+gar robotDoesntTouchMovingObstacle:	
+	alw (MX != robotX) | (MY != robotY);
+	
+	
+
+//assume constraints on the moving obstacles movement
+asm movingObstacleConstraints:
+	alw moveDistX(MX) & (MY = 2);
+	
+//assume obstacles are at specified positions
+/*
+asm obstaclesPositions:
+	alw (obstaclesX[0] = 1) & (obstaclesY[0] = 1) &
+	(obstaclesX[1] = 3) & (obstaclesY[1] = 3) &
+	(obstaclesX[2] = 2) & (obstaclesY[2] = 1) &
+	(obstaclesX[3] = 0) & (obstaclesY[3] = 3) &
+	(obstaclesX[4] = 3) & (obstaclesY[4] = 4) &
+	(MY = 2);
+*/
+
+
+//assume moving obstacle visits both edges infinite times
+asm alwaysMovingLeft:
+	alwEv MX = 0;
+	
+asm alwaysMovingRight:
+	alwEv MX = DX;	
+	
+	
+//module 3 part
+/* 
+env boolean losingPower;
+
+counter turnsAtTopRight(0..4) {
+	//initiate as 0
+	turnsAtTopRight = 0;
+	//increment whenever the robot is at the top right corner
+	inc: robotX = DX & robotY = 0;
+	//reset when robot not at top right corner
+	reset: robotX != DX & robotY != DY;
+	//the robot can stay for as long as it wants, so keep overflow
+	overflow: keep;
+}
+
+gar ifLosingPowerChargeEventually:
+	trig [true]*[losingPower] |=> [true]{0,20}[turnsAtTopRight = 4];
+*/
+//these are assumptions i had to add after integration
+
+//assume that targets aren't on the non moving obstacles
+asm targetADoesntTouchObstacles:
+		alw ((1 != targetAX) | (1 != targetAY)) &
+	((3 != targetAX) | (3 != targetAY)) &
+	((2 != targetAX) | (1 != targetAY)) &
+	((0 != targetAX) | (3 != targetAY)) &
+	((3 != targetAX) | (4 != targetAY));
+	
+	
+asm targetBDoesntTouchObstacles:
+		alw ((1 != targetBX) | (1 != targetBY)) &
+	((3 != targetBX) | (3 != targetBY)) &
+	((2 != targetBX) | (1 != targetBY)) &
+	((0 != targetBX) | (3 != targetBY)) &
+	((3 != targetBX) | (4 != targetBY));
+
+
+asm targetCDoesntTouchObstacles:
+		alw ((1 != targetCX) | (1 != targetCY)) &
+	((3 != targetCX) | (3 != targetCY)) &
+	((2 != targetCX) | (1 != targetCY)) &
+	((0 != targetCX) | (3 != targetCY)) &
+	((3 != targetCX) | (4 != targetCY));
+	
+asm alw (targetAY != 2 | targetAX != 0) & (targetBY != 2 | targetBX != 0) & (targetCY != 2 | targetCX != 0);
+asm alw (targetAY != 2 | targetAX != 4) & (targetBY != 2 | targetBX != 4) & (targetCY != 2 | targetCX != 4);
+//asm alw ((targetAX != 4) | (targetAY != 4)) & ((targetBX != 4) | (targetBY != 4)) & ((targetCX != 4) | (targetCY != 4));
+
+//assume targets aren't on top right corner, else they could block charging station.
+/*
+asm targetsDontBlockCharging:
+	alw ((DX != targetAX) | (0 != targetAY)) &
+	((DX != targetBX) | (0 != targetBY)) &
+	((DX != targetCX) | (0 != targetCY));
+*/
+	
+
+//assume targets can't be right next to one another, else they can block each other forever
+/*
+asm targetANotNextToTargetBVertical:
+	alw targetAX = targetBX -> (targetAY != targetBY + 1) & (targetAY != targetBY - 1);
+
+asm targetANotNextToTargetBHorizontal:
+	alw targetAY = targetBY -> (targetAX != targetBX + 1) & (targetAX != targetBX - 1);
+	
+asm targetANotNextToTargetCVertical:
+	alw targetAX = targetCX -> (targetAY != targetCY + 1) & (targetAY != targetCY - 1);
+
+asm targetANotNextToTargetCHorizontal:
+	alw targetAY = targetCY -> (targetAX != targetCX + 1) & (targetAX != targetCX - 1);
+	
+asm targetBNotNextToTargetCVertical:
+	alw targetBX = targetCX -> (targetBY != targetCY + 1) & (targetBY != targetCY - 1);
+
+asm targetBNotNextToTargetCHorizontal:
+	alw targetBY = targetCY -> (targetBX != targetCX + 1) & (targetBX != targetCX - 1);
+*/
+
+
+asm targetANotNextToTargetB:
+	alw !(((targetAX = targetBX) & ((targetAY != targetBY + 1) | (targetAY != targetBY - 1))) | ((targetAY = targetBY) & ((targetAX != targetBX + 1) | (targetAX != targetBX - 1)))); 
+	
+asm targetANotNextToTargetC:
+	alw !(((targetAX = targetCX) & ((targetAY != targetCY + 1) | (targetAY != targetCY - 1))) | ((targetAY = targetCY) & ((targetAX != targetCX + 1) | (targetAX != targetCX - 1)))); 
+	
+asm targetBNotNextToTargetC:
+	alw !(((targetBX = targetCX) & ((targetBY != targetCY + 1) | (targetBY != targetCY - 1))) | ((targetBY = targetCY) & ((targetBX != targetCX + 1) | (targetBX != targetCX - 1)))); 
+
+//assume targets don't turn red when robot is on top of them
+asm alw atA -> next(Agreen);
+asm alw atB -> next(Bgreen);
+asm alw atC -> next(Cgreen);
+

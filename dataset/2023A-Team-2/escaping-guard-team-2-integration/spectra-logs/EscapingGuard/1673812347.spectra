@@ -1,0 +1,159 @@
+import "../imports/DwyerPatterns.spectra"
+spec EscapingGuard
+
+//Integration
+
+define D := 7;
+
+type Dim = Int(0..D);
+type dimGuard = Int(0..6);
+type dimCounter = Int(0..3);
+
+//The system controls the robot. 
+sys Dim robotX;
+sys Dim robotY;
+
+//2X2 moving guard M. The moving guard is controlled by the environment. 
+env dimGuard movingGuardLeft_X;
+env dimGuard guardLeftCornerY;
+
+//defining fixed obstacles locations 	   
+define 
+	obstacle1X := 2;
+	obstacle1Y := 2;
+	obstacle2X := 2;
+	obstacle2Y := 3;
+	obstacle3X := 2;
+	obstacle3Y := 4;
+	obstacle4X := 2;
+	obstacle4Y := 5;
+	
+	 
+//three fixed targets T1, T2, and T3 
+define 
+	T1X := 0;
+	T1Y := 0;
+	
+	T2X := 7;
+	T2Y := 7;
+
+	T3X := 0;
+	T3Y := 7;
+
+
+//Initially, the robot stands at the top right corner (marked Init), and the guard stands at the top left corner (covering T1).
+define 
+	robotAtTopRightCorner := robotX = 7 & robotY = 0;
+	guardAtTopLeftCorner := movingGuardLeft_X = 0& guardLeftCornerY = 0;
+	
+gar ini robotAtTopRightCorner;
+asm ini guardAtTopLeftCorner;
+
+//Robot moves - In each move, the robot can stay in place or move to an empty adjacent cell (including diagonally).
+//possible next steps of the robot
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);  
+  
+//the robot moves
+gar alw moveDist(robotX) & moveDist(robotY);
+  
+//In each move, the guard can stay in place or move to an empty adjacent cell (including diagonally).
+predicate guardMoveDist(dimGuard pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos); 
+  
+//the guard moves
+asm alw guardMoveDist(movingGuardLeft_X) & guardMoveDist(guardLeftCornerY);
+  
+//The robot is more agile and can do two steps upon each step of the guard. That is, in every three states, only the guard can move in the first state, and then only the robot can move in the next two states.   
+predicate stay(Dim dim):
+next(dim) = dim;
+
+predicate stayXY(Dim dimx, Dim dimy):
+ stay(dimx) & stay(dimy);
+
+predicate guardStay(dimGuard dim):
+next(dim) = dim;
+
+env dimCounter moves;
+asm ini moves = 0;
+
+asm alw moves = 0 -> next(moves) = 1;
+asm alw moves = 1 -> next(moves) = 2;
+asm alw moves = 2 -> next(moves) = 0;
+
+
+gar alw moves = 0 implies stayXY(robotX, robotY);
+asm alw moves = 0 implies (movingGuardLeft_X+1 = next(movingGuardLeft_X)) | (movingGuardLeft_X-1 = next(movingGuardLeft_X)) | (guardLeftCornerY+1 = next(guardLeftCornerY)) | (guardLeftCornerY-1 = next(guardLeftCornerY));
+
+gar alw moves !=0 implies moveDist(robotX) & moveDist(robotY);
+asm alw moves !=0 implies (guardStay(movingGuardLeft_X) & guardStay(guardLeftCornerY));
+
+//A robot R has to visit the three targets T1, T2, and T3 infinitely often in every run.
+define atT1 := robotX = 0 & robotY = 0;
+	   atT2 := robotX = 7 & robotY = 7;
+	   atT3 := robotX = 0 & robotY = 7;
+
+gar alwEv atT1;
+gar alwEv atT2;
+gar alwEv atT3;
+
+//whenever the robot visits T1, it must visit T2 before it visits T3
+gar P_becomes_true_between_Q_and_R(atT2, atT1, atT3);
+
+
+//defining robot locations 
+define 
+	   guardLeft:= next(movingGuardLeft_X) < movingGuardLeft_X;
+	   guardRight:= next(movingGuardLeft_X) > movingGuardLeft_X;
+	   guardUp:= next(guardLeftCornerY) < guardLeftCornerY;
+	   guardDown:= next(guardLeftCornerY) > guardLeftCornerY;
+
+//If the robot is to the left of the moving guard, the guard moves left.
+asm alw moves = 0 & robotX < movingGuardLeft_X implies guardLeft;
+
+//If the robot is above the moving guard, the guard moves right. 
+asm alw moves = 0 & robotX > (movingGuardLeft_X+1) implies guardRight;
+
+//If the robot is above the moving guard, the guard moves down. 
+asm alw moves = 0 & robotY > (guardLeftCornerY+1) implies guardDown;
+
+//If the robot is above the moving guard, the guard moves up. 
+asm alw moves = 0 & robotY < guardLeftCornerY implies guardUp;
+
+//Black cells denote cells that the robot must never visit.	   
+gar alw !(robotX = obstacle1X & robotY = obstacle1Y);
+gar alw !(robotX = obstacle2X & robotY = obstacle2Y);
+gar alw !(robotX = obstacle3X & robotY = obstacle3Y);
+gar alw !(robotX = obstacle4X & robotY = obstacle4Y);
+
+//The robot should move such that it will never be covered by the guard. 
+define 
+	   atGuardLeftCorner:= robotX = movingGuardLeft_X & robotY = guardLeftCornerY;
+	   atGuardRightUpCorner:=robotX = movingGuardLeft_X + 1 & robotY = guardLeftCornerY;
+	   atGuardRightDownCorner:=robotX = movingGuardLeft_X + 1 & robotY = guardLeftCornerY + 1;
+	   atGuardLeftDownCorner:=robotX = movingGuardLeft_X & robotY = guardLeftCornerY + 1;
+	   
+gar alw !atGuardLeftCorner & !atGuardRightUpCorner & !atGuardRightDownCorner & !atGuardLeftDownCorner;
+	  
+//Note that the robot must not be covered by the guard also after the guard's move and before the robot's move.
+
+define oneAboveGuard:= (next(robotY) = guardLeftCornerY - 1 & next(robotX) = movingGuardLeft_X) 
+						| (next(robotY) = guardLeftCornerY - 1 & next(robotX) = movingGuardLeft_X + 1)
+						| (next(robotY) = guardLeftCornerY - 1 & next(robotX) = movingGuardLeft_X + 2)
+						| (next(robotY) = guardLeftCornerY - 1 & next(robotX) = movingGuardLeft_X - 1);
+	   oneBelow:= (next(robotY) = guardLeftCornerY + 2 & next(robotX) = movingGuardLeft_X)
+	   			  | (next(robotY) = guardLeftCornerY + 2 & next(robotX) = movingGuardLeft_X + 1)
+	   			  | (next(robotY) = guardLeftCornerY + 2 & next(robotX) = movingGuardLeft_X + 2)
+	   			  | (next(robotY) = guardLeftCornerY + 2 & next(robotX) = movingGuardLeft_X - 1);
+	   oneLeft:= (next(robotY) = guardLeftCornerY & next(robotX) = movingGuardLeft_X + 2)
+	   			 | (next(robotY) = guardLeftCornerY + 1 & next(robotX) = movingGuardLeft_X + 2);
+	   oneRight:= (next(robotY) = guardLeftCornerY & next(robotX) = movingGuardLeft_X - 1)
+	   			 | (next(robotY) = guardLeftCornerY + 1 & next(robotX) = movingGuardLeft_X - 1);
+
+gar alw moves = 2 implies !oneAboveGuard & !oneBelow & !oneLeft & !oneRight;	   			 
+
+

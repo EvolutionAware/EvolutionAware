@@ -1,0 +1,10 @@
+<record>
+  <index>1673551544548</index>
+  <date>Thu Jan 12 21:25:44 IST 2023</date>
+  <message>TimeStamp-1673551544-Operation-DIAGNOSE-Buffer-  The system can force the environment to violate some safety assumption (G ...)  from some reachable states.</message>
+</record>
+<record>
+  <index>1673551544585</index>
+  <date>Thu Jan 12 21:25:44 IST 2023</date>
+  <message>TimeStamp-1673551544-Operation-DIAGNOSE-Buffer-  The system can force the environment to violate some justice assumption (GF ...)  from all initial states.</message>
+</record>

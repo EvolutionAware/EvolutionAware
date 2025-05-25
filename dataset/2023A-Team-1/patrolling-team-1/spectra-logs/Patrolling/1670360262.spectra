@@ -1,0 +1,82 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+define num_targets := 3;
+define num_static_obstacles := 5;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+env DimX[num_targets] goalsX;
+env DimY[num_targets] goalsY;
+env DimX movingObstacleX;
+env boolean[num_targets] redGoals;
+
+define staticObstaclesX[num_static_obstacles] := {1,3,2,0,3};
+define staticObstaclesY[num_static_obstacles] := {1,3,1,3,4};
+define movingObstacleY := 2;
+
+predicate moveDistX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+
+predicate moveDistY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+
+predicate fixed(DimX x, DimY y):
+  x = next(x) & y = next(y);
+	
+predicate atGoal(Int(0..(num_targets-1)) i):
+  robotX = goalsX[i] & robotY = goalsY[i];
+  
+
+gar robotMoveDist:
+  alw moveDistX(robotX) and moveDistY(robotY);
+
+asm goalsDontMove {Int(0..(num_targets-1)) i}:
+  alw fixed(goalsX[i], goalsY[i]);
+
+gar visitGoalsInifintely {Int(0..(num_targets-1)) i}:
+  alwEv atGoal(i);
+
+asm goalsNotOnObstacles {Int(0..(num_targets-1)) i}:
+   alw forall j in Int(0..(num_static_obstacles-1)).
+     goalsX[i] != staticObstaclesX[j] or goalsY[i] != staticObstaclesY[j];
+     
+		
+gar avoidStaticObstacles {Int(0..(num_static_obstacles-1)) i}:
+  alw robotX != staticObstaclesX[i] or robotY != staticObstaclesY[i]; 
+  
+asm alw moveDistX(movingObstacleX);
+asm alwEv movingObstacleX = 0;
+//asm alwEv movingObstacleX = DX;
+
+gar avoidMovingObstacle:
+	alw (robotX != movingObstacleX or robotY != movingObstacleY);
+
+gar dontMoveThroughObstacle:	
+ alw robotY = movingObstacleY implies (next(robotX) != movingObstacleX or robotX != next(movingObstacleX));
+ 
+
+asm goalsNotRedForever {Int(0..(num_targets-1)) i}:
+	alwEv (!redGoals[i]);
+
+
+asm goalNotRedWhileRobotOnIt {Int(0..(num_targets-1)) i}:
+	alw atGoal(i) implies next(!redGoals[i]); 
+
+asm goalsNotInSamePlace {Int(0..(num_targets-1)) i}:
+   ini forall j in Int(0..(num_targets-1)).
+     (i < j) implies !(goalsX[i] = goalsX[j] & goalsY[i] = goalsY[j]); 
+
+ 
+//gar avoidRedGoals {Int(0..(num_targets-1)) i}:
+//	alw redGoals[i] implies !inPlace(robotX, goalsX[i], robotY, goalsY[i]);

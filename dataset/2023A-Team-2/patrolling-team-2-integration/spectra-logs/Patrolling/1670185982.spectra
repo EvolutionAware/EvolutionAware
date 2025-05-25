@@ -1,0 +1,163 @@
+// ---
+// --- --- ---
+
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+// Part 1: Initializing all entities
+
+sys DimX robotX;
+sys DimY robotY;
+
+gar ini robotX = 0;
+gar ini robotY = 0;
+
+// Declaring obstacles
+env DimX obstacle1X;
+env DimY obstacle1Y;
+asm ini obstacle1X = 0;
+asm ini obstacle1Y = 3;
+
+env DimX obstacle2X;
+env DimY obstacle2Y;
+asm ini obstacle2X = 1;
+asm ini obstacle2Y = 1;
+
+env DimX obstacle3X;
+env DimY obstacle3Y;
+asm ini obstacle3X = 2;
+asm ini obstacle3Y = 1;
+
+env DimX obstacle4X;
+env DimY obstacle4Y;
+asm ini obstacle4X = 3;
+asm ini obstacle4Y = 3;
+
+env DimX obstacle5X;
+env DimY obstacle5Y;
+asm ini obstacle5X = 3;
+asm ini obstacle5Y = 4;
+
+predicate stayY(DimY dimy):
+next(dimy) = dimy;
+
+predicate stayX(DimX dimx):
+next(dimx) = dimx;
+
+predicate stayXY(DimX dimx, DimY dimy):
+stayX(dimx) & stayY(dimy);
+
+// Fix obstacles' location 
+asm alw stayXY(obstacle1X, obstacle1Y) & stayXY(obstacle2X, obstacle2Y) &
+stayXY(obstacle3X, obstacle3Y) & stayXY(obstacle4X, obstacle4Y) &
+stayXY(obstacle5X, obstacle5Y);
+
+
+// Declaring targets
+env DimX targetAX;
+env DimY targetAY;
+
+env DimX targetBX;
+env DimY targetBY;
+
+env DimX targetCX;
+env DimY targetCY;
+
+// Fix targets' location 
+asm alw stayXY(targetAX, targetAY) & stayXY(targetBX, targetBY) &
+stayXY(targetCX, targetCY);
+
+// Declaring and fixing charger in place
+env DimX chargeX;
+env DimY chargeY;
+asm alw stayXY(chargeX, chargeY);
+
+// Declaring moving obstacles
+env DimX mX;
+env DimY mY;
+asm ini mX = 0;
+asm ini mY = 2;
+
+predicate samePlace(DimX dim1x, DimY dim1y, DimX dim2x, DimY dim2y):
+dim1x = dim2x & dim1y = dim2y;
+
+predicate notAtObstacles(DimX dimx, DimY dimy):
+!samePlace(obstacle1X, obstacle1Y, dimx, dimy) & !samePlace(obstacle2X, obstacle2Y, dimx, dimy) &
+!samePlace(obstacle3X, obstacle3Y, dimx, dimy) & !samePlace(obstacle4X, obstacle4Y, dimx, dimy) &
+!samePlace(obstacle5X, obstacle5Y, dimx, dimy);
+
+// Obstacles should not cover the targets
+asm alw notAtObstacles(targetAX, targetAY) & notAtObstacles(targetBX, targetBY) &
+notAtObstacles(targetCX, targetCY);
+
+predicate moveDistX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+predicate moveDistY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+// Robot moves one step max at a time
+ gar robotMoves:
+  always moveDistX(robotX) & moveDistY(robotY);
+
+// Moving obstacle moves only in x axis
+ asm mMoves:
+  always moveDistX(mX) & stayY(mY);
+  
+// Moving obstacle does not cove the robot 
+gar alw !samePlace(robotX, robotY, mX, mY);
+
+// Moving obstacle visits both ends of the row infinitely often
+asm alwEv samePlace(mX, mY, 0, 2);
+asm alwEv samePlace(mX, mY, 4, 2);
+
+define
+	atA := samePlace(robotX, robotY, targetAX, targetAY);
+	atB := samePlace(robotX, robotY, targetBX, targetBY);
+	atC := samePlace(robotX, robotY, targetCX, targetCY);
+	atTopLeftCorner := samePlace(robotX, robotY, 0, 0);
+	atTarget := atA | atB | atC;
+	atCharger := samePlace(robotX, robotY, 4, 0);
+
+// Always, sometimes in the future, the robot will visit each of the targets.
+gar alwEv atA & atB & atC;
+
+gar alw (next(ABlocked) = true) implies !atA;
+gar alw (next(BBlocked) = true) implies !atB;
+gar alw (next(CBlocked) = true) implies !atC;
+
+gar P_becomes_true_After_Q(atTarget, atTopLeftCorner);
+
+env boolean ABlocked;
+env boolean BBlocked;
+env boolean CBlocked;
+
+asm alwEv !ABlocked & !BBlocked & !CBlocked;
+
+// When robot lose power go to recharge for 4 times
+env boolean lostPower;
+gar P_becomes_true_After_Q(lostPower, atA);
+
+asm !samePlace(targetAX, targetAY, 0, 0) & !samePlace(targetBX, targetBY, 0, 0) &
+!samePlace(targetCX, targetCY, 0, 0);
+
+counter chargingCounter(0..4){
+	chargingCounter = 0;
+	reset: !atCharger;
+	inc: atCharger;
+	overflow: false;
+}
+
+gar alw (atCharger & chargingCounter < 4) implies stayX(robotX) & stayY(robotY);
+
+//TODO: complete the specification

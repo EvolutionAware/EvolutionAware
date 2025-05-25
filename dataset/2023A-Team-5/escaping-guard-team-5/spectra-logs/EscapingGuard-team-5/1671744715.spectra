@@ -1,0 +1,65 @@
+import "../imports/DwyerPatterns.spectra"
+spec EscapingGuard
+
+define D := 7;
+
+type Dim = Int(0..D);
+
+sys Dim robotX;
+sys Dim robotY;
+
+//  robot movement
+define atT1 :=
+	robotX = 0 & robotY = 0;
+define atT2 :=
+	robotX = D & robotY = D;
+define atT3 := 
+	robotX = 0 & robotY = D;
+
+gar ini robotX = D & robotY = 0;
+
+gar alw robotX - 1 <= next(robotX) &  next(robotX) <= robotX + 1;
+gar alw robotY - 1 <= next(robotY) &  next(robotY) <= robotY + 1;
+
+gar alwEv atT1;
+gar alwEv atT2;
+gar alwEv atT3;
+
+// Robot will visit 2 between 1 and 3
+
+gar  P_becomes_true_between_Q_and_R(atT2, atT1, atT3);
+
+
+//Obstacles
+
+gar alw 
+	(robotX != 2 | robotY != 2) &
+	(robotX != 2 | robotY != 3) &
+	(robotX != 2 | robotY != 4) &
+	(robotX != 2 | robotY != 5);
+
+//Guard moving logic
+
+env Dim guardX;
+env Dim guardY; //top left corner of guard
+
+asm ini guardX = 0 & guardY = 0;
+
+asm alw guardX < D & guardY < D; //so all of the guard will be inside
+
+asm alw guardX - 1 <= next(guardX) &  next(guardX) <= guardX + 1;
+asm alw guardY - 1 <= next(guardY) &  next(guardY) <= guardY + 1;
+
+sys boolean guardStay;
+gar ini guardStay;
+asm alw guardStay -> guardX = next(guardX) & guardY = next(guardY);
+	
+
+gar trig ()  |=> [guardStay][!guardStay];
+
+
+gar alw robotX < guardX | guardX  + 1 < robotX
+	  | robotY < guardY | guardY  + 1 < robotY;
+
+
+

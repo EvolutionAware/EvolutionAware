@@ -1,0 +1,75 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+//module 2 will handle the restrictions on the robots movement: it cant move more than one space at a time, and cant move where there are obstacles
+
+//these arrays will be where the constant obstacles are
+env DimX[5] obstaclesX;
+env DimY[5] obstaclesY;
+
+//these will be the locations of the moving obstacle
+env DimX MX;
+env DimY MY;
+
+
+predicate moveDistX(DimX pos):
+	pos+1= next(pos) | pos= next(pos) | pos-1= next(pos);
+
+predicate moveDistY(DimY pos):
+	pos+1= next(pos) | pos= next(pos) | pos-1= next(pos);
+	
+//guarantee the robot only moves one step at a time
+gar robotMoves:
+	alw moveDistX(robotX) & moveDistY(robotY);
+	
+//guarantee the robot never touches obstacles
+gar robotDoesntTouchObstacles:
+	alw ((obstaclesX[0] != robotX) | (obstaclesY[0] != robotY)) &
+	((obstaclesX[1] != robotX) | (obstaclesY[1] != robotY)) &
+	((obstaclesX[2] != robotX) | (obstaclesY[2] != robotY)) &
+	((obstaclesX[3] != robotX) | (obstaclesY[3] != robotY)) &
+	((obstaclesX[4] != robotX) | (obstaclesY[4] != robotY)) &
+	((MX != robotX) | (MY != robotY));
+	
+	
+//assume that the normal obstacles don't move
+asm normalObstaclesDontMove:
+ alw ((obstaclesX[0] = next(obstaclesX[0])) & (obstaclesY[0] = next(obstaclesY[0]))) &
+ ((obstaclesX[1] = next(obstaclesX[1])) & (obstaclesY[1] = next(obstaclesY[1]))) &
+ ((obstaclesX[2] = next(obstaclesX[2])) & (obstaclesY[2] = next(obstaclesY[2]))) &
+ ((obstaclesX[3] = next(obstaclesX[3])) & (obstaclesY[3] = next(obstaclesY[3]))) &
+ ((obstaclesX[4] = next(obstaclesX[4])) & (obstaclesY[4] = next(obstaclesY[4])));
+
+//assume constraints on the moving obstacles movement
+asm movingObstacleConstraints:
+	alw moveDistX(MX) & (MY = next(MY));
+	
+//assume obstacles are at specified positions
+asm obstaclesPositions:
+	alw (obstaclesX[0] = 1) & (obstaclesY[0] = 1) &
+	(obstaclesX[1] = 3) & (obstaclesY[1] = 3) &
+	(obstaclesX[2] = 2) & (obstaclesY[2] = 1) &
+	(obstaclesX[3] = 0) & (obstaclesY[3] = 3) &
+	(obstaclesX[4] = 3) & (obstaclesY[4] = 4) &
+	(MY = 2);
+
+//assume moving obstacle visits both edges infinite times
+asm alwaysMovingLeft:
+	alwEv MX = 0;
+	
+asm alwaysMovingRight:
+	alwEv MX = DX;	
+	
+	
+	
+	
+	

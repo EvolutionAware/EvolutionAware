@@ -1,0 +1,92 @@
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+define D := 7;
+type Dim = Int(0..D);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+//increment 1 - robots move one step at a time without moving diagonally
+
+predicate moveDist(Dim pos):
+	(pos = next(pos)) | (pos = next(pos) + 1) | (pos = next(pos)-1);
+
+predicate staysInPlace(Dim pos):
+	pos = next(pos);
+	
+gar robotsMoveOneAtATime:
+	alw moveDist(robotX0) & moveDist(robotX1) & moveDist(robotY0) & moveDist(robotY1);
+	
+gar robotsDontMoveDiagonally:
+	alw (staysInPlace(robotX0) | staysInPlace(robotY0)) & (staysInPlace(robotX1) | staysInPlace(robotY1));
+
+//increment 2 - robots don't move on top of obstacles
+
+gar robotDontTouchObstacles:
+	alw (robotY0 = 1 -> (robotX0 != 2 & robotX0 != 3 & robotX0 != 4 & robotX0 != 5))
+	& (robotY1 = 1 -> (robotX1 != 2 & robotX1 != 3 & robotX1 != 4 & robotX1 != 5));
+	
+//increment 3 - basic intruder movement
+env Dim intruderX;
+env Dim intruderY;
+
+asm intruderMovesOneAtATime:
+	alw turnsIntruderStaysStill < 4 -> (moveDist(intruderX) & moveDist(intruderY));
+	
+asm intruderDoesntMoveDiagonally:
+	alw turnsIntruderStaysStill < 4 -> (staysInPlace(intruderX) | staysInPlace(intruderY));
+	
+asm intruderDoesntTouchObstacles:
+	alw intruderY = 1 -> (intruderX != 2 & intruderX != 3 & intruderX != 4 & intruderX != 5);
+	
+//increment 4 - more complicated intruder movement (moving away from robots)
+
+define robotsLockingTopLeftCorner := (robotX0 = 0 & robotY0 = 1 & robotX1 = 1 & robotY1 = 0) | (robotX1 = 0 & robotY1 = 1 & robotX0 = 1 & robotY0 = 0);
+define robotsLockingTopRightCorner := (robotX0 = 7 & robotY0 = 1 & robotX1 = 6 & robotY1 = 0) | (robotX1 = 7 & robotY1 = 1 & robotX0 = 6 & robotY0 = 0);
+define robotsLockingBottomLeftCorner := (robotX0 = 0 & robotY0 = 6 & robotX1 = 1 & robotY1 = 7) | (robotX1 = 0 & robotY1 = 6 & robotX0 = 1 & robotY0 = 7);
+define robotsLockingBottomRightCorner := (robotX0 = 7 & robotY0 = 6 & robotX1 = 6 & robotY1 = 7) | (robotX1 = 7 & robotY1 = 6 & robotX0 = 6 & robotY0 = 7);
+
+define intruderCantMove := (intruderX = 0 & intruderY = 0 & robotsLockingTopLeftCorner) //can be locked in corners
+	| (intruderX = 0 & intruderY = 7 & robotsLockingBottomLeftCorner)
+	| (intruderX = 7 & intruderY = 0 & robotsLockingTopRightCorner)
+	| (intruderX = 7 & intruderY = 7 & robotsLockingBottomRightCorner)
+	| (intruderY = 0 & (intruderX = 2 | intruderX = 3 | intruderX = 4 | intruderX = 5) & robotY0 = 0 & robotY1 = 0 & ((intruderX - 1 = robotX0 & intruderX + 1 = robotX1) | (intruderX - 1 = robotX1 & intruderX + 1 = robotX0))); // can be locked above obstacles
+	
+asm intruderMovesAwayFromRobot0:
+	alw turnsIntruderStaysStill < 4 -> (((robotX0 = intruderX & robotY0 = intruderY + 1 & !intruderCantMove) -> ((!staysInPlace(intruderX) | !staysInPlace(intruderY)) & next(intruderY) != intruderY + 1))
+	& ((robotX0 = intruderX & robotY0 = intruderY - 1 & !intruderCantMove) -> ((!staysInPlace(intruderX) | !staysInPlace(intruderY)) & next(intruderY) != intruderY - 1))
+	& ((robotY0 = intruderY & robotX0 = intruderX - 1 & !intruderCantMove) -> ((!staysInPlace(intruderX) | !staysInPlace(intruderY)) & next(intruderX) != intruderX - 1))
+	& ((robotY0 = intruderY & robotX0 = intruderX + 1 & !intruderCantMove) -> ((!staysInPlace(intruderX) | !staysInPlace(intruderY)) & next(intruderX) != intruderX + 1)));
+	
+asm intruderMovesAwayFromRobot1:
+	alw turnsIntruderStaysStill < 4 -> (((robotX1 = intruderX & robotY1 = intruderY + 1 & !intruderCantMove) -> ((!staysInPlace(intruderX) | !staysInPlace(intruderY)) & next(intruderY) != intruderY + 1))
+	& ((robotX1 = intruderX & robotY1 = intruderY - 1 & !intruderCantMove) -> ((!staysInPlace(intruderX) | !staysInPlace(intruderY)) & next(intruderY) != intruderY - 1))
+	& ((robotY1 = intruderY & robotX1 = intruderX - 1 & !intruderCantMove) -> ((!staysInPlace(intruderX) | !staysInPlace(intruderY)) & next(intruderX) != intruderX - 1))
+	& ((robotY1 = intruderY & robotX1 = intruderX + 1 & !intruderCantMove) -> ((!staysInPlace(intruderX) | !staysInPlace(intruderY)) & next(intruderX) != intruderX + 1)));
+	
+//increment 5 - intruder gets forced to stay in place for 4 turns
+
+counter turnsIntruderStaysStill(0..4) {
+	//initiate as 0
+	turnsIntruderStaysStill = 0;
+	//increment whenever the intruder stays still
+	inc: staysInPlace(intruderX) & staysInPlace(intruderY);
+	//reset when intruder moves
+	reset: !staysInPlace(intruderX) | !staysInPlace(intruderY);
+}
+
+gar intruderAlwaysGetsCaught:
+	alwEv turnsIntruderStaysStill = 4;
+	
+asm intruderStaysInPlaceIfCantMove:
+	alw intruderCantMove & turnsIntruderStaysStill < 4 -> staysInPlace(intruderX) & staysInPlace(intruderY);
+	
+//increment 6 - intruder resets after staying in place for 4 turns
+
+asm intruderResets:
+	alw turnsIntruderStaysStill = 4 -> next(intruderY) = 0;
+//had to change increment 3 to enable this to work
+	
+	

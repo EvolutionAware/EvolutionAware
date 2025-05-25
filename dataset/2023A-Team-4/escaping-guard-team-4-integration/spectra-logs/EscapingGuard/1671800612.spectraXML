@@ -1,0 +1,10 @@
+<record>
+  <index>1671800612481</index>
+  <date>Fri Dec 23 15:03:32 IST 2022</date>
+  <message>TimeStamp-1671800612-Start-DIAGNOSE</message>
+</record>
+<record>
+  <index>1671800612702</index>
+  <date>Fri Dec 23 15:03:32 IST 2022</date>
+  <message>TimeStamp-1671800612-Operation-DIAGNOSE-Buffer-  The system can force the environment to violate some safety assumption (G ...)  from some reachable states.</message>
+</record>
