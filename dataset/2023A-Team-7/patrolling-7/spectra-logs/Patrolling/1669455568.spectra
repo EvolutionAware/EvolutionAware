@@ -1,0 +1,224 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+/* INCREMENT 1
+ * Always, sometimes in the future, the robot will visit each of the targets.
+ * The three target locations never move during a run. 
+ */
+
+env DimX target1X;
+env DimY target1Y;
+
+env DimX target2X;
+env DimY target2Y;
+
+env DimX target3X;
+env DimY target3Y;
+
+define
+	atTarget1 := (robotX = target1X) & (robotY = target1Y);
+	atTarget2 := (robotX = target2X) & (robotY = target2Y);
+	atTarget3 := (robotX = target3X) & (robotY = target3Y);
+	atTopLeft := (robotX = 0) & (robotY = 0);
+	atMidObs := (robotX = midObsX) & (robotY = midObsY); // added this at 4th increment
+	target1Covered := (target1X = midObsX) & (target1Y = midObsY);  // added this at 4th increment
+	target2Covered := (target2X = midObsX) & (target2Y = midObsY);  // added this at 4th increment
+	target3Covered := (target3X = midObsX) & (target3Y = midObsY);  // added this at 4th increment
+	atChargingStation := (robotX = 4) & (robotY = 0);  // added this at 5th increment
+
+/* predicates for non-moving dimensions on the X and Y axis */
+predicate stationaryDimX(DimX pos):
+	pos = next(pos);
+	
+predicate stationaryDimY(DimY pos):
+	pos = next(pos);
+
+/* assumptions that the targets are not moving during the run */
+asm stationaryTarget1:
+	always stationaryDimX(target1X) & stationaryDimY(target1Y);
+	
+asm stationaryTarget2:
+	always stationaryDimX(target2X) & stationaryDimY(target2Y);
+	
+asm stationaryTarget3:
+	always stationaryDimX(target3X) & stationaryDimY(target3Y);
+
+/* movement on the X axis is maximum by 1 slot */
+predicate moveXDist(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);   
+  
+/* movement on the Y axis is maximum by 1 slot */
+predicate moveYDist(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+
+/* the robot begins at the top left corner */
+gar beginAtTopLeft:
+	ini atTopLeft;
+
+/* robot moves at most in steps of 1 */
+gar robotMoves:
+  always moveXDist(robotX) & moveYDist(robotY);
+
+/* visit the targets infinitely often */
+gar robotVisitsTarget1:
+	alwEv atTarget1;
+	
+gar robotVisitsTarget2:
+	alwEv atTarget2;
+	
+gar robotVisitsTarget3:
+	alwEv atTarget3;
+	
+ predicate atObstacle(DimX x, DimY y):
+ 	(x = 1 and y = 1) |
+ 	(x = 2 and y = 1) |
+ 	(x = 0 and y = 3) |
+ 	(x = 3 and y = 3) |
+ 	(x = 3 and y = 4);
+ 	
+ asm target1NotOnObstacle:
+ 	always !atObstacle(target1X, target1Y);
+ 	
+ asm target2NotOnObstacle:
+ 	always !atObstacle(target2X, target2Y);
+ 	
+ asm target3NotOnObstacle:
+ 	always !atObstacle(target3X, target3Y);
+ 	
+ gar robotNotOnObstacle:
+ 	always !atObstacle(robotX, robotY);
+ 	
+ /* assume that no two targets are located on the same spot */
+asm targets12AreSeparate:
+	always target1X != target2X or target1Y != target2Y;
+
+asm targets13AreSeparate:
+	always target1X != target3X or target1Y != target3Y;
+	
+asm targets23AreSeparate:
+	always target3X != target2X or target3Y != target2Y;
+
+/* END OF INCREMENT 1  */
+
+/* INCREMENT 2
+ * Whenever the robot visits a target, it should eventually also visit the top left corner.
+ */
+
+/* robot visits the top left corner between visiting targets */
+gar robotVisitsTopLeftBetweenTargets:
+	alwEv atTopLeft;
+	
+/* END OF INCREMENT 2 */
+
+/* INCREMENT 3
+ * Each target location may always be blocked (turned from green to red) for a finite number
+ * of states and then eventually unblocked (turned green again).
+ * When a target is blocked, the robot should not visit it. 
+ */
+
+/* environment variables for whether the targets are blocked */
+env boolean target1Blocked;
+env boolean target2Blocked;
+env boolean target3Blocked;
+
+/* assume that all targets are eventually not blocked */
+/* the parts of "and !targetXCovered" was added at increment 4 */
+asm target1EventuallyFree:
+	alwEv !target1Blocked;
+
+asm target2EventuallyFree:
+	alwEv !target2Blocked;
+
+asm target3EventuallyFree:
+	alwEv !target3Blocked;
+	
+/* assume that initially all targets aren't blocked (so the top left location will be surely available) */
+asm targetsInitiallyNotBlocked:
+	ini !target1Blocked and !target2Blocked and !target3Blocked;
+	
+ asm onlyOneTargetBlocked1:
+ 	always target1Blocked -> (!target2Blocked and !target3Blocked);
+ 	
+ asm onlyOneTargetBlocked2:
+ 	always target2Blocked -> (!target1Blocked and !target3Blocked);
+ 	
+ asm onlyOneTargetBlocked3:
+ 	always target3Blocked -> (!target2Blocked and !target1Blocked);
+
+/* the robot will not step on any blocked targets */
+gar robotAvoidsBlockedTarget1:
+	always target1Blocked -> !atTarget1;
+	
+gar robotAvoidsBlockedTarget2:
+	always target2Blocked -> !atTarget2;
+	
+gar robotAvoidsBlockedTarget3:
+	always target3Blocked -> !atTarget3;
+
+/* END OF INCREMENT 3 */
+
+/* INCREMENT 4
+ * There is a sliding obstacle in the middle row, which visits both ends of the row infinitely often, 
+ * marked here in light gray with (M). 
+ * The obstacle moves only horizontally and in steps of one or zero. It can move on targets.  
+ * The robot should guarantee to never be covered by the moving obstacle. 
+ */
+
+/* define middle obstacle by the environment */
+env DimX midObsX;
+env DimY midObsY;
+
+asm midObsAtMiddleY:
+	always midObsY=2;
+
+asm midObsMoves:
+  always moveXDist(midObsX);
+  
+asm midObsReachesEnd:
+	alwEv midObsX = 4;
+	
+asm midObsReachesStart:
+	alwEv midObsX = 0;
+
+gar robotAvoidsMidObs:
+	always !atMidObs;
+	
+/* END OF INCREMENT 4 */
+
+/* INCREMENT 5 
+ * Occasionally, the robot starts losing power. In this case, 
+ * it has to eventually go to the top right corner for charging and stay there for at least 4 states.
+ */
+
+/* assume that targets are not at charging station */
+asm target1NotAtChargingStation:
+	always (target1X != 4) & (target1Y != 0);
+	
+asm target2NotAtChargingStation:
+	always (target2X != 4) & (target2Y != 0);
+	
+asm target3NotAtChargingStation:
+	always (target3X != 4) & (target3Y != 0);
+
+/* the robot will always eventually re-charge at the charging station */
+gar robotEventuallyRecharges:
+	alwEv atChargingStation;
+	
+/* when the robot charges, it stays in the charging station for at least 4 turns */
+gar robotChargesForFourTurns:
+	trig [true]*[!atChargingStation][atChargingStation] |=> [atChargingStation]{3,};
+	
+/* END OF INCREMENT 5 */

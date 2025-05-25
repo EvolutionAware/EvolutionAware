@@ -1,0 +1,123 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+env DimX target1X;
+env DimY target1Y;
+
+env DimX target2X;
+env DimY target2Y;
+
+env DimX target3X;
+env DimY target3Y;
+
+define
+	atTarget1 := (robotX = target1X) & (robotY = target1Y);
+	atTarget2 := (robotX = target2X) & (robotY = target2Y);
+	atTarget3 := (robotX = target3X) & (robotY = target3Y);
+	atTarget := atTarget1 or atTarget2 or atTarget3;
+	atTopLeft := (robotX = 0) & (robotY = 0);
+
+/* predicates for non-moving dimensions on the X and Y axis */
+predicate stationaryDimX(DimX pos):
+	pos = next(pos);
+	
+predicate stationaryDimY(DimY pos):
+	pos = next(pos);
+
+/* assumptions that the targets are not moving during the run */
+asm stationaryTarget1:
+	always stationaryDimX(target1X) & stationaryDimY(target1Y);
+	
+asm stationaryTarget2:
+	always stationaryDimX(target2X) & stationaryDimY(target2Y);
+	
+asm stationaryTarget3:
+	always stationaryDimX(target3X) & stationaryDimY(target3Y);
+
+/* movement on the X axis is maximum by 1 slot */
+predicate moveXDist(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);   
+  
+/* movement on the Y axis is maximum by 1 slot */
+predicate moveYDist(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+
+/* the robot begins at the top left corner */
+gar beginAtTopLeft:
+	ini atTopLeft;
+
+/* robot moves at most in steps of 1 */
+gar robotMoves:
+  always moveXDist(robotX) & moveYDist(robotY);
+
+/* visit the targets infinitely often */
+gar robotVisitsTarget1:
+	alwEv atTarget1;
+	
+gar robotVisitsTarget2:
+	alwEv atTarget2;
+	
+gar robotVisitsTarget3:
+	alwEv atTarget3;
+
+/* END OF INCREMENT 1  */
+
+/* robot visits the top left corner between visiting targets */
+gar robotVisitsTopLeftBetweenTargets:
+	P_becomes_true_between_Q_and_R(atTopLeft, atTarget, atTarget);
+	
+/* END OF INCREMENT 2 */
+
+/* environment variables for whether the targets are blocked */
+env boolean target1Blocked;
+env boolean target2Blocked;
+env boolean target3Blocked;
+
+/* assume that all targets are eventually not blocked */
+asm target1EventuallyFree:
+	alwEv !target1Blocked;
+
+asm target2EventuallyFree:
+	alwEv !target2Blocked;
+
+asm target3EventuallyFree:
+	alwEv !target3Blocked;
+	
+/* assume that initially all targets aren't blocked (so the top left location will be surely available) */
+asm targetsInitiallyNotBlocked:
+	ini !target1Blocked and !target2Blocked and !target3Blocked;
+	
+/* assume that no two targets are located on the same spot */
+asm targets12AreSeparate:
+	always target1X != target2X or target1Y != target2Y;
+
+asm targets13AreSeparate:
+	always target1X != target3X or target1Y != target3Y;
+	
+asm targets23AreSeparate:
+	always target3X != target2X or target3Y != target2Y;
+
+/* the robot will not step on any blocked targets */
+gar robotAvoidsBlockedTarget1:
+	always target1Blocked -> !atTarget1;
+	
+gar robotAvoidsBlockedTarget2:
+	always target2Blocked -> !atTarget2;
+	
+gar robotAvoidsBlockedTarget3:
+	always target3Blocked -> !atTarget3;
+
+/* END OF INCREMENT 3 */

@@ -1,0 +1,20 @@
+<record>
+  <index>1670264211437</index>
+  <date>Mon Dec 05 20:16:51 IST 2022</date>
+  <message>TimeStamp-1670264211-Operation-ALL_CORES-Buffer-Core #1 at lines &lt; 48 50 56 57 58 61 &gt; is</message>
+</record>
+<record>
+  <index>1670264211456</index>
+  <date>Mon Dec 05 20:16:51 IST 2022</date>
+  <message>TimeStamp-1670264211-Operation-ALL_CORES-Buffer-Core #2 at lines &lt; 46 50 56 57 58 61 &gt; is</message>
+</record>
+<record>
+  <index>1670264211478</index>
+  <date>Mon Dec 05 20:16:51 IST 2022</date>
+  <message>TimeStamp-1670264211-Operation-ALL_CORES-Buffer-Core #3 at lines &lt; 47 50 56 57 58 61 &gt; is</message>
+</record>
+<record>
+  <index>1670264211497</index>
+  <date>Mon Dec 05 20:16:51 IST 2022</date>
+  <message>TimeStamp-1670264211-Operation-ALL_CORES-Buffer-Found 5 elements that belong to all cores, at lines &lt; 50 56 57 58 61 &gt;. See markers in specification file.</message>
+</record>

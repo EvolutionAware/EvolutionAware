@@ -1,0 +1,130 @@
+import "../imports/DwyerPatterns.spectra"
+spec EscapingGuard
+
+define D := 7;
+
+type Dim = Int(0..D);
+type guardDim = Int(0..6);
+
+
+sys Dim robotX;
+sys Dim robotY;
+
+//defining fixed obstacles locations 
+define fixedObstacle1X:=2;
+	   fixedObstacle1Y:=2;
+	   fixedObstacle2X:=2;
+	   fixedObstacle2Y:=3;
+	   fixedObstacle3X:=2;
+	   fixedObstacle3Y:=4;
+	   fixedObstacle4X:=2;
+	   fixedObstacle4Y:=5;
+	
+	 
+//defining fixed target locations  
+define fixedT1X:=0;
+	   fixedT1Y:=0;
+	   fixedT2X:=0;
+	   fixedT2Y:=7;
+	   fixedT3X:=7;
+	   fixedT3Y:=7;
+
+//defining the guard by it's left corner
+env guardDim guardLeftCornerX;
+env guardDim guardLeftCornerY;
+
+//initial state of the robot
+gar ini robotX = 7;
+gar ini robotY = 0;
+
+//initial state of the guard is at the left corner 
+asm ini guardLeftCornerX = 0;
+asm ini guardLeftCornerY = 0;
+
+//moves
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);  
+  
+//moves
+predicate guardMoveDist(guardDim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos); 
+  
+  
+predicate stay(Dim dim):
+next(dim) = dim;
+
+predicate guardStay(guardDim dim):
+next(dim) = dim;
+
+define atT1:= robotX = fixedT1X & robotY = fixedT1Y;
+	   atT2:= robotX = fixedT2X & robotY = fixedT2Y;
+	   atT3:= robotX = fixedT3X & robotY = fixedT3Y;
+	   atFixedObstacle1:= robotX = fixedObstacle1X & robotY = fixedObstacle1Y;
+	   atFixedObstacle2:= robotX = fixedObstacle2X & robotY = fixedObstacle2Y;
+	   atFixedObstacle3:= robotX = fixedObstacle3X & robotY = fixedObstacle3Y;
+	   atFixedObstacle4:= robotX = fixedObstacle4X & robotY = fixedObstacle4Y;
+	   atGuardLeftCorner:= robotX = guardLeftCornerX & robotY = guardLeftCornerY;
+	   atGuardRightUpCorner:=robotX = guardLeftCornerX + 1 & robotY = guardLeftCornerY;
+	   atGuardRightDownCorner:=robotX = guardLeftCornerX + 1 & robotY = guardLeftCornerY + 1;
+	   atGuardLeftDownCorner:=robotX = guardLeftCornerX & robotY = guardLeftCornerY + 1;
+
+
+//the robot moves
+gar alw moveDist(robotX) & moveDist(robotY);
+
+//the robot should never step on fixed obsta
+gar alw !atFixedObstacle1;
+gar alw !atFixedObstacle2;
+gar alw !atFixedObstacle3;
+gar alw !atFixedObstacle4;
+
+//the robot must infinitely often visit three targets in every run
+gar alwEv atT1;
+gar alwEv atT2;
+gar alwEv atT3;
+
+//whenever the robot visits T1, it must visit T2 before it visits T3
+gar P_becomes_true_between_Q_and_R(atT2, atT1, atT3);
+
+//the robot should not cross guard
+gar !atGuardLeftCorner & !atGuardRightUpCorner & !atGuardRightDownCorner & !atGuardLeftDownCorner;
+
+//the guard moves
+asm alw guardMoveDist(guardLeftCornerX) & guardMoveDist(guardLeftCornerY);
+
+//guard is chasing robot
+define guardLeft:= next(guardLeftCornerX) <= guardLeftCornerX;
+	   guardRight:= next(guardLeftCornerX) >= guardLeftCornerX;
+	   guardUp:= next(guardLeftCornerY) <= guardLeftCornerY;
+	   guardDown:= next(guardLeftCornerY) >= guardLeftCornerY;
+	   
+//when the robot is on left of the guard, move guard left
+//asm alw robotX < guardLeftCornerX implies guardLeft;
+//when the robot is on right of the guard, move guard right
+//asm alw robotX > guardLeftCornerX implies guardRight;
+//when the robot is below of the guard, move guard down
+//asm alw robotY > guardLeftCornerY implies guardDown;
+//when the robot is above of the guard, move guard up
+//asm alw robotY < guardLeftCornerY implies guardUp;
+
+//define robotDoesMove := (robotX+1 = next(robotX)) | (robotX-1 = next(robotX)) | (robotY+1 = next(robotY)) | (robotY-1 = next(robotY));
+//define gurdDoesMove := (guardLeftCornerX+1 = next(guardLeftCornerX)) | (guardLeftCornerX-1 = next(guardLeftCornerX)) | (guardLeftCornerY+1 = next(guardLeftCornerY)) | (guardLeftCornerY-1 = next(guardLeftCornerY));
+
+//if something doesn't work out, check the counter (specifically the numbers)
+counter robotMovment(0..3){
+	robotMovment = 0;
+	inc: (moveDist(robotX) & moveDist(robotY)) | (guardMoveDist(guardLeftCornerX) & guardMoveDist(guardLeftCornerY));
+	overflow: false;
+	reset: robotMovment = 3;
+}
+
+asm alw robotMovment = 2 implies ((guardMoveDist(guardLeftCornerX) & guardMoveDist(guardLeftCornerY)) & (stay(robotX) & stay(robotY)));
+asm alw robotMovment !=2 implies (moveDist(robotX) & moveDist(robotY)) & (guardStay(guardLeftCornerX) & guardStay(guardLeftCornerY));
+
+
+
+

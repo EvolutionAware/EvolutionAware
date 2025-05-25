@@ -1,0 +1,104 @@
+import "../imports/DwyerPatterns.spectra"
+spec Deliveries
+
+define DX := 5;
+define DY := 5;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+type Coord = Int(0..DY);
+
+sys DimX robotX0;
+sys DimY robotY0;
+sys DimX robotX1;
+sys DimY robotY1;
+
+//feature 1- elevator
+
+env DimY elevatorY;
+define elevatorX := 0;
+
+predicate moveDistY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);  
+  
+predicate moveDistX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);     
+
+asm alw moveDistY(elevatorY);
+
+//Elevator visits the ground floor and the top floor infinitely many times
+asm alwEv elevatorY = 0;
+asm alwEv elevatorY = 5;  
+
+
+//feature 2- lamps
+env DimX lamp0X;
+env DimY lamp0Y;
+env DimX lamp1X;
+env DimY lamp1Y;
+
+// rooms on the the ground floor never ask for a package 
+asm alw lamp1Y != 5;
+asm alw lamp0Y != 5;
+
+// Lamps don't move until the correct robot picks them up 
+asm alw !(lamp0X = robotX0 & lamp0Y = robotY0) | packagesCounter0 >= 3 -> lamp0X = next(lamp0X) & lamp0Y = next(lamp0Y);
+asm alw !(lamp1X = robotX1 & lamp1Y = robotY1) | packagesCounter1 >= 3  -> lamp1X = next(lamp1X) & lamp1Y = next(lamp1Y);
+
+
+// When the correct robot arrives at the room, the lamp icon disappears and pops up somewhere else, but not on the same floor
+asm alw (lamp0X = robotX0 & lamp0Y = robotY0 & packagesCounter0 < 3) -> lamp0Y != next(lamp0Y);
+asm alw (lamp1X = robotX1 & lamp1Y = robotY1 & packagesCounter1 < 3) -> lamp1Y != next(lamp1Y);
+
+
+//Each robot will never deliver more than three packages without visiting the ground floor right corner at least once.
+counter packagesCounter0(0..3){
+	packagesCounter0 = 0;
+	reset: robotY0 = 5 & robotX0 = 5;
+	inc: robotX0 = lamp0X & robotY0 = lamp0Y;
+	overflow: false; 
+}
+
+counter packagesCounter1(0..3){
+	packagesCounter1 = 0;
+	reset: robotY1 = 5 & robotX1 = 5;
+	inc: robotX1 = lamp1X & robotY1 = lamp1Y;
+	overflow: false; 
+}
+
+
+// feature 3 - robots
+gar ini robotY0 = 5 & robotY1 = 5;
+
+gar alw !(robotX0 = robotX1 & robotY0 = robotY1);  
+gar alw moveDistX(robotX0); 
+gar alw moveDistX(robotX1); 
+
+//A robot may enter or exit the elevator only when it is on the same floor as the robot. 
+gar alw next(elevatorY) != robotY0 -> next(robotX0) != 0;
+gar alw next(elevatorY) != robotY1 -> next(robotX1) != 0;
+
+gar alw robotX0 = 0 -> (next(robotY0) = next(elevatorY) & next(robotX0) = 0) | (next(robotX0) = 1 & next(robotY0) = robotY0);
+gar alw robotX1 = 0 -> (next(robotY1) = next(elevatorY) & next(robotX1) = 0) | (next(robotX1) = 1 & next(robotY1) = robotY1);
+
+gar alw robotX0 = 0 -> robotY0 = elevatorY;
+gar alw robotX1 = 0 -> robotY1 = elevatorY;
+
+gar alw robotX0 != 0 -> next(robotY0) = robotY0;
+gar alw robotX1 != 0 -> next(robotY1) = robotY1;
+
+
+//Every request for a package must eventually result in the delivery of the correct package (A or B) by the correct robot (A or B). 
+gar alwEv robotX0 = lamp0X & robotY0 = lamp0Y;
+gar alwEv robotX1 = lamp1X & robotY1 = lamp1Y; 
+
+//Each robot will never deliver more than three packages without visiting the ground floor right corner at least once.
+gar S_responds_to_P_globally(robotY0 = 5 & robotX0 = 5, packagesCounter0 >= 3 );
+gar S_responds_to_P_globally(robotY1 = 5 & robotX1 = 5, packagesCounter1 >= 3 );
+
+
+ 

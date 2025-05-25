@@ -1,0 +1,25 @@
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+define D := 7;
+type Dim = Int(0..D);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+predicate stay(Dim dim):
+	next(dim) = dim;
+	
+
+//a counter that indicates left robot reached buttom left corner
+counter groundCounter(0..1){
+	groundCounter = 0;
+	inc: robotX0 = 0 & robotY0 = 7;
+	overflow: keep;
+}
+
+define robot0AtGround := groundCounter = 1;
+
+//make sure right robot doesn't move till left robot reached ground
+gar alw !robot0AtGround -> stay(robotX1) & stay(robotY1);

@@ -1,0 +1,98 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+// Part 1: Initializing all entities
+
+sys DimX robotX;
+sys DimY robotY;
+
+gar ini robotX = 0;
+gar ini robotY = 0;
+
+// Declaring obstacles
+env DimX obstacle1X;
+env DimY obstacle1Y;
+asm ini obstacle1X = 0;
+asm ini obstacle1Y = 3;
+
+env DimX obstacle2X;
+env DimY obstacle2Y;
+asm ini obstacle2X = 1;
+asm ini obstacle2Y = 1;
+
+env DimX obstacle3X;
+env DimY obstacle3Y;
+asm ini obstacle3X = 2;
+asm ini obstacle3Y = 1;
+
+env DimX obstacle4X;
+env DimY obstacle4Y;
+asm ini obstacle4X = 3;
+asm ini obstacle4Y = 3;
+
+env DimX obstacle5X;
+env DimY obstacle5Y;
+asm ini obstacle5X = 3;
+asm ini obstacle5Y = 4;
+
+predicate stayY(DimY dimy):
+next(dimy) = dimy;
+
+predicate stayX(DimX dimx):
+next(dimx) = dimx;
+
+predicate stayXY(DimX dimx, DimY dimy):
+stayX(dimx) & stayY(dimy);
+
+// Fix obstacles' location 
+asm alw stayXY(obstacle1X, obstacle1Y);
+asm alw stayXY(obstacle2X, obstacle2Y);
+asm alw stayXY(obstacle3X, obstacle3Y);
+asm alw stayXY(obstacle4X, obstacle4Y);
+asm alw stayXY(obstacle5X, obstacle5Y);
+
+// Declaring targets
+env DimX targetAX;
+env DimY targetAY;
+
+env DimX targetBX;
+env DimY targetBY;
+
+env DimX targetCX;
+env DimY targetCY;
+
+// Fix targets' location 
+asm alw stayXY(targetAX, targetAY);
+asm alw stayXY(targetBX, targetBY);
+asm alw stayXY(targetCX, targetCY);
+
+// Declaring and fixing charger in place
+env DimX chargeX;
+env DimY chargeY;
+asm alw stayXY(chargeX, chargeY);
+
+// Declaring moving obstacles
+env DimX mX;
+env DimY mY;
+asm ini mX = 0;
+asm ini mY = 2;
+
+predicate samePlace(DimX dim1x, DimY dim1y, DimX dim2x, DimY dim2y):
+dim1x = dim2x & dim1y = dim2y;
+
+predicate notAtObstacles(DimX dimx, DimY dimy):
+!samePlace(obstacle1X, obstacle1Y, dimx, dimy) & !samePlace(obstacle2X, obstacle2Y, dimx, dimy) &
+!samePlace(obstacle3X, obstacle3Y, dimx, dimy) & !samePlace(obstacle4X, obstacle4Y, dimx, dimy) &
+!samePlace(obstacle5X, obstacle5Y, dimx, dimy);
+
+asm alw notAtObstacles(targetAX, targetAY) & notAtObstacles(targetBX, targetBY) &
+notAtObstacles(targetCX, targetCY);
+
+
+//TODO: complete the specification

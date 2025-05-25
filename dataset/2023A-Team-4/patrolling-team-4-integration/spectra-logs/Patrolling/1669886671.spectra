@@ -1,0 +1,152 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+/* env variables for all the targets locations. */
+env DimX targetAX;
+env DimY targetAY;
+env DimX targetBX;
+env DimY targetBY;
+env DimX targetCX;
+env DimY targetCY;
+
+
+/* The targets should stay at their places for all the run. */
+predicate stay(DimX posX, DimY posY):
+  posX = next(posX) and posY = next(posY);
+  
+asm alw stay(targetAX, targetAY);  
+asm alw stay(targetBX, targetBY);  
+asm alw stay(targetCX, targetCY);  
+ 
+define 
+	atTopLeftCorner := robotX = 0 and robotY = 0;
+	atA := robotX = targetAX and robotY = targetAY;
+	atB := robotX = targetBX and robotY = targetBY;
+	atC := robotX = targetCX and robotY = targetCY;
+
+/* The robot starts at the top left corner. */
+gar ini atTopLeftCorner;
+
+/* The robot goes on each target for infinity times in infinity run. */
+gar alwEv atA;
+gar alwEv atB;
+gar alwEv atC;
+gar alwEv atTopLeftCorner;
+
+/* The robot can move one step in each time */
+predicate moveDist(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+gar robotAlwaysMove: alw (moveDist(robotX) & moveDist(robotY));
+
+/* env variables for all the targets is blocked status. */
+env boolean isABlocked;
+env boolean isBBlocked;
+env boolean isCBlocked;
+
+/* the robot can't visit a target if it's blocked */
+gar alw isABlocked -> !atA;
+gar alw isBBlocked -> !atB;
+gar alw isCBlocked -> !atC;
+
+/* There are infinity times when the targets are not blocked. */
+//asm alwEv !isABlocked;
+//asm alwEv !isBBlocked;
+//asm alwEv !isCBlocked;
+
+/* 
+ The robot starts at point grid[0][0]. We want to make sure that if one of target is located at that point 
+ than the target is not blocked. 
+ We could write a simpler assumption "ini if target at[0][0] -> target is not blocked." but for
+ simplicity we assumed that there are ini not blocked.  
+ */
+asm ini !isABlocked;
+asm ini !isBBlocked;
+asm ini !isCBlocked;
+
+/*
+ There is a situation that all of the targets are adjacent in one of the corners. In that situation, if the robot is 
+ in the corner(on one of the targets), all the three targets can become blocked and than the robot can satisfy the guarantees.  
+ If we will assume that the target can't change to blocked if the robot is in it, then the env can't prevent the robot from
+ staying on it's target and wait for other target to become unblocked. 
+ */
+asm alw atA -> next(!isABlocked);
+asm alw atB -> next(!isBBlocked);
+asm alw atC -> next(!isCBlocked);
+
+/* Each target is in different place */
+predicate differentPlaces(DimX tar1X, DimY tar1Y, DimX tar2X, DimY tar2Y):
+	tar1X = tar2X -> (tar1Y != tar2Y);
+
+asm alw differentPlaces(targetAX, targetAY, targetBX, targetBY);
+asm alw differentPlaces(targetAX, targetAY, targetCX, targetCY);
+asm alw differentPlaces(targetCX, targetCY, targetBX, targetBY);
+
+/* The obstacles are fixed and known in advance for every run, so they are
+ not set as env variables. This function purpose is to make sure that the
+ robot won't go over the obstacles. 
+ */
+ predicate robotNotHittingObstacles(DimX robX, DimY robY, DimX obsX, DimY obsY):
+ 	robX = obsX -> robY != obsY;
+ 
+ gar alw robotNotHittingObstacles(robotX, robotY, 1, 1);
+ gar alw robotNotHittingObstacles(robotX, robotY, 3, 3);
+ gar alw robotNotHittingObstacles(robotX, robotY, 2, 1);
+ gar alw robotNotHittingObstacles(robotX, robotY, 0, 3);
+ gar alw robotNotHittingObstacles(robotX, robotY, 3, 4);
+ 
+/* We assume that the targets can't be located in the obstacles cells  */
+predicate notOnObstacles(DimX targetX, DimY targetY):
+	(targetX = 1 -> targetY != 1) and (targetX = 3 -> targetY != 3)  and (targetX = 2 -> targetY != 1) and (targetX = 0 -> targetY != 3) and (targetX = 3 -> targetY != 4);
+
+asm alw notOnObstacles(targetAX, targetAY);
+asm alw notOnObstacles(targetBX, targetBY);
+asm alw notOnObstacles(targetCX, targetCY); 
+ 
+/* env variables for the moving obstacle. We can actually remove the 'MObstacleY' because it is fixed and known in advance for every run,
+ but we decided to keep it for readability. 
+ */
+env DimX MObstacleX;
+//env DimY MObstacleY;
+
+
+// asm alw MObstacleY = 2;
+// asm ini MObstacleX =0;
+
+// asm alw moveDist(MObstacleX);
+
+
+/* This makes sure that the robot won't go over the moving obstacles.  */
+gar alw robotNotHittingObstacles(robotX, robotY, MObstacleX, 2);
+
+/* If there is a target that holds targetY = 2 than 
+ we don't wan't the moving obstacle to block it every time it is unblocked.
+ so we assume that there is infinitely times when the target is unblocked and the moving obstacle
+ is not blocking it.  
+ */
+asm alwEv !isABlocked & 2 != targetAY;
+asm alwEv !isBBlocked & 2 != targetBY;
+asm alwEv !isCBlocked & 2 != targetCY;
+
+ 
+define atChargingPlace := robotX = 4 and robotY = 0;
+
+/* if we added this gar, than the spec is not realizable and we can't check for unrealizable core for
+ technical reasons. Wrote more in the weekly progress.
+ */
+// gar trig [true]*[atChargingPlace] |=> [atChargingPlace]{3,};
+
+/* assumption - The robot runs out of battery once in a while. */
+gar alwEv atChargingPlace;
+ 	

@@ -1,0 +1,38 @@
+import "../imports/DwyerPatterns.spectra"
+//blocked targets 
+
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+gar ini robotX = 0;
+gar ini robotY = 0;
+
+
+env DimX chargeX;
+env DimY chargeY;
+
+asm ini chargeX = 4;
+asm ini chargeY = 0;
+
+env boolean robotLostPower;
+define robotIsAtChargingPoint := robotX = 4 & robotY = 0;
+
+gar P_becomes_true_After_Q(robotLostPower, robotIsAtChargingPoint);
+
+counter chargeCounter(0..4){
+	chargeCounter = 0;
+	reset: !robotIsAtChargingPoint;
+	inc: robotIsAtChargingPoint;
+	overflow: false;
+}
+
+gar alw (robotIsAtChargingPoint & chargeCounter < 4) -> next(robotX) = robotX & next(robotY) = robotY;
+	

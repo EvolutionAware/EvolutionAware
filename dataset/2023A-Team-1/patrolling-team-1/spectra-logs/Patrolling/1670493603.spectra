@@ -1,0 +1,125 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+define num_targets := 3;
+define num_static_obstacles := 5;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+env DimX[num_targets] goalsX;
+env DimY[num_targets] goalsY;
+env DimX movingObstacleX;
+env boolean[num_targets] redGoals;
+
+define staticObstaclesX[num_static_obstacles] := {1,3,2,0,3};
+define staticObstaclesY[num_static_obstacles] := {1,3,1,3,4};
+define movingObstacleY := 2;
+
+predicate moveDistX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+
+predicate moveDistY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+
+predicate fixed(DimX x, DimY y):
+  x = next(x) & y = next(y);
+  
+// robot is at goal i	
+//predicate atGoal(Int(0..(num_targets-1)) i):
+//  robotX = goalsX[i] & robotY = goalsY[i];
+/*equal ^_ ????*/
+predicate atPoint(DimX x1, DimX x2 ,DimY y1, DimY y2):
+  x1 = x2 and y1 = y2;
+
+gar robotMoveDist:
+  alw moveDistX(robotX) and moveDistY(robotY);
+
+asm goalsDontMove {Int(0..(num_targets-1)) i}:
+  alw fixed(goalsX[i], goalsY[i]);
+
+//gar visitGoalsInifintely {Int(0..(num_targets-1)) i}:
+//  alwEv atGoal(i);
+/*equal ^_ */
+gar visitFirstGoalInifintely:
+ alwEv atPoint(robotX, goalsX[0], robotY, goalsY[0]);
+gar visitSecondGoalInifintely:
+ alwEv atPoint(robotX, goalsX[1], robotY, goalsY[1]);
+gar visitThirdGoalInifintely:
+ alwEv atPoint(robotX, goalsX[2], robotY, goalsY[2]);
+
+//asm goalsNotOnObstacles {Int(0..(num_targets-1)) i}:
+//   alw forall j in Int(0..(num_static_obstacles-1)).
+//     goalsX[i] != staticObstaclesX[j] or goalsY[i] != staticObstaclesY[j];
+     
+/* cont from here */		
+//gar avoidStaticObstacles {Int(0..(num_static_obstacles-1)) i}:
+//  alw robotX != staticObstaclesX[i] or robotY != staticObstaclesY[i]; 
+  
+//asm alw moveDistX(movingObstacleX); //required only when adding the blocked goals mechanism.
+//asm alwEv movingObstacleX = 0;
+//asm alwEv movingObstacleX = DX;
+
+//gar avoidMovingObstacle:
+//	alw (robotX != movingObstacleX or robotY != movingObstacleY);
+
+//gar dontMoveThroughObstacle:	
+// alw robotY = movingObstacleY implies (next(robotX) != movingObstacleX or robotX != next(movingObstacleX));
+ 
+
+//asm goalsNotRedForever {Int(0..(num_targets-1)) i}:
+//	alwEv !redGoals[i] & (goalsX[i] != movingObstacleX or goalsY[i] != movingObstacleY);
+
+
+// relates to the special case in which the three goals are in the corner and the robot is surrounded by them.
+//asm goalNotRedWhileRobotOnIt {Int(0..(num_targets-1)) i}:
+//	alw atGoal(i) implies next(!redGoals[i]); 
+
+
+///asm goalsNotInSamePlace {Int(0..(num_targets-1)) i}:
+///   ini forall j in Int(0..(num_targets-1)).
+///     (i < j) implies !(goalsX[i] = goalsX[j] & goalsY[i] = goalsY[j]); 
+/*equal ^_ */
+//asm goal01NotInSamePlace:
+//	alw !(goalsX[0] = goalsX[1] & goalsY[0] = goalsY[1]);
+//asm goal02NotInSamePlace:
+//	alw !(goalsX[0] = goalsX[2] & goalsY[0] = goalsY[2]);
+//asm goal12NotInSamePlace:
+//	alw !(goalsX[1] = goalsX[2] & goalsY[1] = goalsY[2]);
+
+/* all commented till here should undo */
+
+/*
+ * Blocked (red) goals guarantee:
+ */
+//gar avoidRedGoals {Int(0..(num_targets-1)) i}:
+//	alw redGoals[i] implies !atGoal(i);
+
+// edge case: if the goal is in (4,3) then it can stay red until the moving obs drives the robot away
+//asm goalNotIn_4_3 {Int(0..(num_targets-1)) i}:
+//	ini !(goalsX[i] = 4 and goalsY[i] = 3);
+
+// edge case to analyze and understand (doesnt work for avoiding red goals
+//asm ini goalsX[0] = 4 and goalsX[1] = 3 and goalsX[2] = 3 and goalsY[0] = 1 and goalsY[1] = 2 and goalsY[2] = 1;
+
+// edge case: if the goals block the bottom left part of the field then they can stay red until the moving obs drives the robot away
+//asm goalsNotBlockingBottomLeft {Int(0..(num_targets-1)) i}:
+//	ini forall j in Int(0..(num_targets-1)). 
+//		!(goalsX[i] = 1 and goalsX[j] = 2 and goalsY[i] = 3 and goalsY[i] = 3);
+		
+		
+
+		
+		
+		
+		
+		

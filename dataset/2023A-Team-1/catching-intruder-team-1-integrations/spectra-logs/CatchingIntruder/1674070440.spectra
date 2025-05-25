@@ -1,0 +1,100 @@
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+define D := 7;
+type Dim = Int(0..D);
+type Turns = Int(0..4);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+env Dim intruderX;
+env Dim intruderY;
+
+env Turns turns;
+
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos-1 = next(pos);
+
+predicate stayDist(Dim pos):
+  pos = next(pos);
+
+define intruderMovesLegally :=
+  ((moveDist(intruderX) and stayDist(intruderY)) or
+  (stayDist(intruderX) and moveDist(intruderY)) or
+  (stayDist(intruderX) and stayDist(intruderY)));
+
+define intruderNearRobot0 :=
+  (((intruderX = robotX0) and (intruderY - robotY0 = 1)) or
+  ((intruderX = robotX0) and (robotY0 - intruderY = 1)) or
+  ((intruderY = robotY0) and (intruderX - robotX0 = 1)) or
+  ((intruderY = robotY0) and (robotX0 - intruderX = 1)));
+
+define intruderNearRobot1 :=
+  (((intruderX = robotX1) and (intruderY - robotY1 = 1)) or
+  ((intruderX = robotX1) and (robotY1 - intruderY = 1)) or
+  ((intruderY = robotY1) and (intruderX - robotX1 = 1)) or
+  ((intruderY = robotY1) and (robotX1 - intruderX = 1)));
+
+define intruderCantMoveLeft :=
+  (intruderX = 0 or
+  (intruderY = robotY0 and intruderX - robotX0 = 1) or
+  (intruderY = robotY1 and intruderX - robotX1 = 1));
+
+define intruderCantMoveRight :=
+  (intruderX = D or
+  (intruderY = robotY0 and robotX0 - intruderX = 1) or
+  (intruderY = robotY1 and robotX1 - intruderX = 1));
+
+define intruderCantMoveUp :=
+  (intruderY = 0 or
+  (intruderX = robotX0 and intruderY - robotY0 = 1) or
+  (intruderX = robotX1 and intruderY - robotY1 = 1));
+
+define intruderCantMoveDown :=
+  (intruderY = D or
+  (intruderX = robotX0 and robotY0 - intruderY = 1) or
+  (intruderX = robotX1 and robotY1 - intruderY = 1));  
+
+define intruderRespectsRobot0 :=
+  ((intruderX = robotX0 implies next(intruderY) != robotY0) and
+  (intruderY = robotY0 implies next(intruderX) != robotX0));
+
+define intruderRespectsRobot1 :=
+  ((intruderX = robotX1 implies next(intruderY) != robotY1) and
+  (intruderY = robotY1 implies next(intruderX) != robotX1));
+
+define intruderNearRobot := (intruderNearRobot0 or intruderNearRobot1);
+
+define intruderCanMove := (!intruderCantMoveLeft and !intruderCantMoveRight and !intruderCantMoveUp and !intruderCantMoveDown);
+
+define intruderMoves := (!stayDist(intruderX) or !stayDist(intruderY));
+
+define intruderRespectsRobots := (intruderRespectsRobot0 and intruderRespectsRobot1);
+
+//asm ini turns = 0;
+
+asm increasingTurns:
+  alw (turns+1 = next(turns)) iff (intruderX = next(intruderX) and intruderY = next(intruderY));
+  
+//asm turnsBehave:
+//  alw (turns+1 = next(turns) or turns = next(turns) or next(turns) = 0);
+
+asm intruderEscapesFromRobots:
+  alw (intruderNearRobot and intruderCanMove) implies (intruderMoves and intruderRespectsRobots);
+
+//asm alw PREV(turns != 4) implies intruderMovesLegally;
+
+asm intruderCantMoveStaysInPlace:
+  alw ((!(intruderCanMove)) and turns < 4) implies (stayDist(intruderX) and stayDist(intruderY));
+
+gar intruderStaysFourTurnsInPlace:
+  alwEv turns = 4;
+
+// mock guarantees
+gar alw !(robotX0 = intruderX and robotY0 = intruderY);
+gar alw !(robotX1 = intruderX and robotY1 = intruderY);
+// end of mock guarantees
+

@@ -1,0 +1,131 @@
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+define D := 7;
+type Dim = Int(0..D);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+//initial positions of two robots
+gar ini robotX0 = 0 & robotY0 = 0;
+gar ini robotX1 = 7 & robotY1 = 0;
+
+env Dim intruderX;
+env Dim intruderY;
+
+//fixed obstacles
+define obstacle1X:=2;
+	   obstacle1Y:=1;
+	   obstacle2X:=3;
+	   obstacle2Y:=1;
+	   obstacle3X:=4;
+	   obstacle3Y:=1;
+	   obstacle4X:=5;
+	   obstacle4Y:=1;
+	   
+define r1AtObstacle1:= robotX0 = obstacle1X & robotY0 = obstacle1Y;
+	   r1AtObstacle2:= robotX0 = obstacle2X & robotY0 = obstacle2Y;
+	   r1AtObstacle3:= robotX0 = obstacle3X & robotY0 = obstacle3Y;
+	   r1AtObstacle4:= robotX0 = obstacle4X & robotY0 = obstacle4Y;
+	   r2AtObstacle1:= robotX1 = obstacle1X & robotY1 = obstacle1Y;
+	   r2AtObstacle2:= robotX1 = obstacle2X & robotY1 = obstacle2Y;
+	   r2AtObstacle3:= robotX1 = obstacle3X & robotY1 = obstacle3Y;
+	   r2AtObstacle4:= robotX1 = obstacle4X & robotY1 = obstacle4Y;
+	   intruderAtObstacle1:= intruderX = obstacle1X & intruderY = obstacle1Y;
+	   intruderAtObstacle2:= intruderX = obstacle2X & intruderY = obstacle2Y;
+	   intruderAtObstacle3:= intruderX = obstacle3X & intruderY = obstacle3Y;
+	   intruderAtObstacle4:= intruderX = obstacle4X & intruderY = obstacle4Y;
+
+//initially, robot is at the bottom row
+asm ini intruderY = 7;
+
+//the robots movement
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);  
+
+predicate stay(Dim dim):
+next(dim) = dim;
+
+sys boolean r1ReachedGround;
+
+//boolean that will tell whether the left robot reached the bottom left corner 
+gar ini r1ReachedGround = false;
+
+// change r1ReachedGround to true when robot 1 reched left corner
+gar alw next(robotY0) = 7 & next(robotX0) = 0 -> next(r1ReachedGround) = true;
+
+//make sure the r1ReachedGround stays the same when robot 1 not at left corner 
+gar alw !(next(robotY0) = 7 & next(robotX0) = 0) -> next(r1ReachedGround) = r1ReachedGround;
+
+//make sure second robot isn't moving unless allowed
+gar alw !r1ReachedGround implies next(robotX1) = 7 & next(robotY1) = 0;
+
+
+
+// make sure the robots only move to ajacent cell, but not diagonally
+gar alw (moveDist(robotX0) & stay(robotY0)) | (moveDist(robotY0) & stay(robotX0)) | (stay(robotX0) & stay(robotY0));
+gar alw (moveDist(robotX1) & stay(robotY1)) | (moveDist(robotY1) & stay(robotX1)) | (stay(robotX1) & stay(robotY1));
+
+// make sure also intruder moves the same way
+asm alw (moveDist(intruderX) & stay(intruderY)) | (moveDist(intruderY) & stay(intruderX)) | (stay(intruderX) & stay(intruderY));
+
+//the robots shouldn't go on top of each other
+gar alw !(robotX0 = robotX1 & robotY0 = robotY1);
+
+//the robots don't step on obstacle
+gar alw !r1AtObstacle1;
+gar alw !r1AtObstacle2;
+gar alw !r1AtObstacle3;
+gar alw !r1AtObstacle4;
+gar alw !r2AtObstacle1;
+gar alw !r2AtObstacle2;
+gar alw !r2AtObstacle3;
+gar alw !r2AtObstacle4;
+
+//the intruder should not step on obstacle
+asm alw !intruderAtObstacle1;
+asm alw !intruderAtObstacle2;
+asm alw !intruderAtObstacle3;
+asm alw !intruderAtObstacle4;
+
+//make sure the intruder moves away when possible from robot
+define robot1AtLeft:= robotX0 = intruderX - 1 & robotY0 = intruderY;
+	   robot1AtRight:= robotX0 = intruderX + 1 & robotY0 = intruderY;
+	   robot1Above:= robotX0 = intruderX & robotY0 = intruderY - 1;
+	   robot1Below:= robotX0 = intruderX & robotY0 = intruderY + 1;
+	   robot2AtLeft:= robotX1 = intruderX - 1 & robotY1 = intruderY;
+	   robot2AtRight:= robotX1 = intruderX + 1 & robotY1 = intruderY;
+	   robot2Above:= robotX1 = intruderX & robotY1 = intruderY - 1;
+	   robot2Below:= robotX1 = intruderX & robotY1 = intruderY + 1;
+	   
+//defining intruder movement
+define moveLeft:= next(intruderX) = intruderX - 1 & next(intruderY) = intruderY;
+	   moveRight:= next(intruderX) = intruderX + 1 & next(intruderY) = intruderY;
+	   moveUp:= next(intruderX) = intruderX & next(intruderY) = intruderY - 1;
+	   moveDown:= next(intruderX) = intruderX & next(intruderY) = intruderY + 1;
+	   stayFoot:= next(intruderX) = intruderX & next(intruderY) = intruderY;
+
+// intruder escapes from robots
+asm robot1AtLeft | robot2AtLeft implies moveRight | moveUp | moveDown | stayFoot;
+asm robot1AtRight | robot2AtRight implies moveLeft | moveUp | moveDown | stayFoot;
+asm robot1Above | robot2Above implies moveLeft | moveRight | moveDown | stayFoot;
+asm robot1Below | robot2Below implies moveLeft | moveRight | moveUp | stayFoot;
+
+// robots don't go on top of intruder
+define robot1AtIntruder:= robotX0 = intruderX & robotY0 = intruderY;
+	   robot2AtIntruder:= robotX1 = intruderX & robotY1 = intruderY;
+
+gar alw !robot1AtIntruder;
+gar alw !robot2AtIntruder;
+
+
+define intruderAtRobot1:= next(intruderX) = robotX0 & next(intruderY) = robotY0;
+	   intruderAtRobot2:= next(intruderX) = robotX1 & next(intruderY) = robotY1;
+	   
+asm alw !intruderAtRobot1;
+asm alw !intruderAtRobot2;
+

@@ -1,0 +1,229 @@
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+
+// 8X8 grid 
+define D := 7;
+type Dim = Int(0..D);
+
+// two robots R0 and R1
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+// moving intruder D
+env Dim intruderX;
+env Dim intruderY;
+
+// Initially, the two robots R0 and R1 are located at the top left and right corners respectively. 
+gar ini robotX0 = 0 & robotY0 = 0;
+gar ini robotX1 = 7 & robotY1 = 0;
+
+//A moving intruder (D) enters the grid from a random cell at the bottom row.  
+asm ini intruderY = 7;
+
+predicate stay(Dim dim):
+	next(dim) = dim;
+	
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);  
+  
+ // In each state, both robots can stay in place or move to an empty adjacent cell, but they never move diagonally.
+gar alw (moveDist(robotX0) & stay(robotY0)) | (moveDist(robotY0) & stay(robotX0)) | (stay(robotX0) & stay(robotY0));
+gar alw (moveDist(robotX1) & stay(robotY1)) | (moveDist(robotY1) & stay(robotX1)) | (stay(robotX1) & stay(robotY1));
+
+// Robots don't go over obstacles
+gar alw (!(robotX0 = 2 & robotY0 = 1) & !(robotX0 = 3 & robotY0 = 1) & !(robotX0 = 4 & robotY0 = 1) & !(robotX0 = 5 & robotY0 = 1));
+gar alw (!(robotX1 = 2 & robotY1 = 1) & !(robotX1 = 3 & robotY1 = 1) & !(robotX1 = 4 & robotY1 = 1) & !(robotX1 = 5 & robotY1 = 1));
+
+// Intruder not on obstacles
+asm alw (!(intruderX = 2 & intruderY = 1) & !(intruderX = 3 & intruderY = 1) & !(intruderX = 4 & intruderY = 1) & !(intruderX = 5 & intruderY = 1));
+
+//The robots cannot go on top of each other.
+gar alw !(robotX0 = robotX1 & robotY0 = robotY1);
+
+//robot and intruder doesn't go on top of each other
+gar alw !(robotX0 = intruderX & robotY0 = intruderY);
+gar alw !(robotX1 = intruderX & robotY1 = intruderY);
+
+asm alw !(intruderX = robotX0 & intruderY = robotY0);
+asm alw !(intruderX = robotX1 & intruderY = robotY1);
+
+// At the beginning of the run, the robot in the top right corner must not move before the robot from the top left corner visits the bottom left corner.
+counter robotVisitsLeftBottomCounter(0..1){
+	robotVisitsLeftBottomCounter = 0;
+	inc: robotY0 = 7 & robotX0 = 0;
+	overflow: keep; //because used only once
+}
+
+gar alw !(robotVisitsLeftBottomCounter = 1) -> stay(robotX1) & stay(robotY1);
+
+//If and when the intruder stays in the same cell for 4 consecutive states it disappears and immediately appears again in a random cell at the bottom row.
+asm alw intruderCounter != 4 -> (moveDist(intruderX) & stay(intruderY)) | (moveDist(intruderY) & stay(intruderX)) | (stay(intruderX) & stay(intruderY));
+asm alw intruderCounter = 4 -> next(intruderY) = 7 & !(stay(intruderX) & stay(intruderY));
+
+predicate isCellEmpty(Dim x, Dim y):
+	!((robotX0) = x & (robotY0) = y) & !((robotX1) = x & (robotY1) = y) & (!(x = 2 & y = 1) & !(x = 3 & y = 1) & !(x = 4 & y = 1) & !(x = 5 & y = 1));	
+
+define
+	intruderMovesRight := isCellEmpty(intruderX+1, intruderY) & intruderX < 7;
+	intruderMovesLeft := isCellEmpty(intruderX-1, intruderY) & intruderX > 0;
+	intruderMovesUp := isCellEmpty(intruderX, intruderY-1) & intruderY > 0;
+	intruderMovesDown := isCellEmpty(intruderX, intruderY+1) & intruderY < 7;
+
+//check robot position
+predicate robotAt(Dim x, Dim y):
+ (robotX0 = x & robotY0 = y) | (robotX1 = x & robotY1 = y);
+ 
+define
+	stuckInTopRight := (intruderX = 7 & intruderY = 0) & ((robotX0 = 6 & robotY0 = 0) | (robotX1 = 6 & robotY1 = 0)) & ((robotX0 = 7 & robotY0 = 1) | (robotX1 = 7 & robotY1 = 1));
+	stuckInTopLeft := (intruderX = 0 & intruderY = 0) & robotAt(1, 0) & robotAt(0, 1);
+	stuckInBottomRight := (intruderX = 7 & intruderY = 7) & robotAt(6, 7) & robotAt(7, 6);
+	stuckInBottomLeft := (intruderX = 0 & intruderY = 7) & robotAt(0, 6) & robotAt(1, 7);
+	stuckInMiddle := intruderX >= 2 & intruderX <= 5 & intruderY = 1 & robotAt(intruderX - 1, intruderY) & robotAt(intruderX + 1, intruderY);
+	intruderIsStuck := intruderCounter != 4 & (stuckInTopRight | stuckInTopLeft | stuckInBottomLeft | stuckInBottomRight | stuckInMiddle);
+ 
+//If a robot is horizontally or vertically adjacent to the intruder, the intruder must try to move away from it.
+asm alw intruderCounter != 4 & ((robotX0 = intruderX - 1 & robotY0 = intruderY) | (robotX1 = intruderX - 1 & robotY1 = intruderY)) -> next(intruderX) >= intruderX;
+asm alw intruderCounter != 4 & ((robotX0 = intruderX + 1 & robotY0 = intruderY) | (robotX1 = intruderX + 1 & robotY1 = intruderY)) -> next(intruderX) <= intruderX;
+asm alw intruderCounter != 4 & ((robotX0 = intruderX & robotY0 = intruderY - 1) | (robotX1 = intruderX & robotY1 = intruderY - 1)) -> next(intruderY) >= intruderY;
+asm alw intruderCounter != 4 & ((robotX0 = intruderX & robotY0 = intruderY + 1) | (robotX1 = intruderX & robotY1 = intruderY + 1)) -> next(intruderY) <= intruderY;
+
+asm alw !intruderIsStuck & (intruderMovesRight | intruderMovesLeft | intruderMovesUp | intruderMovesDown) -> !(stay(intruderX) & stay(intruderY));
+
+//If and when the intruder stays in the same cell for 4 consecutive states it disappears and immediately appears again in a random cell at the bottom row.
+type count = Int(0..4);
+env count intruderCounter;
+asm ini intruderCounter = 0;
+
+asm alw stay(intruderX) & stay(intruderY) -> next(intruderCounter) = intruderCounter + 1;
+asm alw !stay(intruderX) & stay(intruderY) -> next(intruderCounter) = 0;
+
+asm alw intruderIsStuck -> stay(intruderX) & stay(intruderY);
+gar alw intruderIsStuck -> stay(robotX0) & stay(robotY0) & stay(robotX1) & stay(robotY1);
+
+gar alwEv intruderCounter = 4;
+
+/*
+ import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+
+define D := 7;
+type Dim = Int(0..D);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+gar ini (robotX0 = 0 & robotY0 = 0);
+gar ini (robotX1 = 7 & robotY1 = 0);
+
+env Dim intruderX;
+env Dim intruderY;
+
+asm ini intruderY = 7;
+
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);  
+
+predicate stay(Dim dim):
+	next(dim) = dim;
+	
+predicate notAtObstacles(Dim x, Dim y){
+	!(x = 2 & y = 1) & !(x = 3 & y = 1) & !(x = 4 & y = 1) & !(x = 5 & y = 1)
+}
+
+// Robots' movement	
+gar alw (moveDist(robotX0) & stay(robotY0)) | (moveDist(robotY0) & stay(robotX0)) | (stay(robotX0) & stay(robotY0));
+gar alw (moveDist(robotX1) & stay(robotY1)) | (moveDist(robotY1) & stay(robotX1)) | (stay(robotX1) & stay(robotY1));
+// Robots don't go over obstacles
+gar alw (notAtObstacles(robotX0, robotY0) & notAtObstacles(robotX1, robotY1));
+// Robots don't go on top of each other
+gar alw !(robotX0 = robotX1 & robotY0 = robotY1);
+
+//a counter that indicates left robot reached buttom left corner
+counter groundCounter(0..1){
+	groundCounter = 0;
+	inc: robotX0 = 0 & robotY0 = 7;
+	overflow: keep;
+}
+
+define robot0AtGround := groundCounter = 1;
+
+//make sure right robot doesn't move till left robot reached ground
+gar alw !robot0AtGround -> stay(robotX1) & stay(robotY1);
+
+// intruder moves, it jumps after staying in place for 4 consecutive states
+asm alw StaysCounter != 4 -> (moveDist(intruderX) & stay(intruderY)) | (moveDist(intruderY) & stay(intruderX)) |
+	(stay(intruderX) & stay(intruderY));
+asm alw StaysCounter = 4 -> next(intruderY) = 7 & !(stay(intruderX) & stay(intruderY));
+
+//make sure intruder isn't at obstacles
+asm alw notAtObstacles(intruderX, intruderY);
+
+//make sure robot and intruder doesn't go on each other
+gar alw !(robotX0 = intruderX & robotY0 = intruderY);
+gar alw !(robotX1 = intruderX & robotY1 = intruderY);
+asm alw !(intruderX = robotX0 & intruderY = robotY0);
+asm alw !(intruderX = robotX1 & intruderY = robotY1);
+
+
+
+predicate clearCell(Dim x, Dim y):
+	!((robotX0) = x & (robotY0) = y) & !((robotX1) = x & (robotY1) = y) & notAtObstacles(x, y);	
+
+define
+	intruderLeft := intruderX > 0 & clearCell(intruderX - 1, intruderY);
+	intruderRight := intruderX < 7 & clearCell(intruderX + 1, intruderY);
+	intruderUp := intruderY > 0 & clearCell(intruderX, intruderY - 1);
+	intruderDown := intruderY < 7 & clearCell(intruderX, intruderY + 1);
+
+//check robot position
+predicate robotAt(Dim x, Dim y):
+ (robotX0 = x & robotY0 = y) | (robotX1 = x & robotY1 = y);
+ 
+ 
+define
+	intruderTopLeft:= intruderX = 0 & intruderY = 0;
+	intruderTopRight:= intruderX = 7 & intruderY = 0;
+	intruderBottomLeft:= intruderX = 0 & intruderY = 7;
+	intruderBottomRight:= intruderX = 7 & intruderY = 7;
+	topLeft:= intruderTopLeft & robotAt(1, 0) & robotAt(0, 1);
+	topRight:= intruderTopRight & robotAt(6, 0) & robotAt(7, 1);
+	bottomLeft:= intruderBottomLeft & robotAt(0, 6) & robotAt(1, 7);
+	bottomRight:= intruderBottomRight & robotAt(6, 7) & robotAt(7, 6);
+	mid:= intruderX >= 2 & intruderX <= 5 & intruderY = 1 &
+		robotAt(intruderX - 1, intruderY) & robotAt(intruderX + 1, intruderY);
+	stuck:= StaysCounter != 4 & (topLeft | topRight | bottomLeft | bottomRight | mid);
+ 
+//make sure intruder doesn't move to a direction robot is at
+asm alw StaysCounter != 4 & robotAt(intruderX - 1, intruderY) -> next(intruderX) >= intruderX;
+asm alw StaysCounter != 4 & robotAt(intruderX + 1, intruderY) -> next(intruderX) <= intruderX;
+asm alw StaysCounter != 4 & robotAt(intruderX, intruderY - 1) -> next(intruderY) >= intruderY;
+asm alw StaysCounter != 4 & robotAt(intruderX, intruderY + 1) -> next(intruderY) <= intruderY;
+
+//make sure that intruder moves if possible
+asm alw !stuck & (intruderLeft | intruderRight | intruderUp | intruderDown) -> !(stay(intruderX) & stay(intruderY));
+
+
+//count the amount of consecutive states the intruder stays in place
+type count = Int(0..4);
+env count StaysCounter;
+asm ini StaysCounter = 0;
+asm alw stay(intruderX) & stay(intruderY) -> next(StaysCounter) = StaysCounter + 1;
+asm alw !stay(intruderX) & stay(intruderY) -> next(StaysCounter) = 0;
+
+//make sure the intrufer stays in place when stuck
+asm alw stuck -> stay(intruderX) & stay(intruderY);
+//make sure the robot stays in plave when intruder sruck
+gar alw stuck -> stay(robotX0) & stay(robotY0) & stay(robotX1) & stay(robotY1);
+
+
+gar alwEv StaysCounter = 4;
+
+ */

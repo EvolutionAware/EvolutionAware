@@ -1,0 +1,116 @@
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+define D := 7;
+type Dim = Int(0..D);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);  
+
+predicate stay(Dim dim):
+	next(dim) = dim;
+	
+
+//module 1 robot movement
+gar ini robotX0 = 0 and robotY0 = 0;
+gar ini robotX1 = 7 and robotY1 = 0;
+
+gar alw !(robotX0 = robotX1 and robotY0 = robotY1);
+
+gar alw moveDist(robotX0) and stay(robotY0) or moveDist(robotY0) and stay(robotX0) or stay(robotX0) and stay(robotY0);
+gar alw moveDist(robotX1) and stay(robotY1) or moveDist(robotY1) and stay(robotX1) or stay(robotX1) and stay(robotY1);
+
+
+counter reachedBottomLeftCorner(0..1){
+	reachedBottomLeftCorner = 0;
+	inc: robotX0 = 0 and robotY0 = 7;
+	overflow: keep;
+}
+
+gar alw !(reachedBottomLeftCorner = 1) -> stay(robotX1) and stay(robotY1);
+
+gar dontCollideRobot0:
+	alw !(robotX0 = 2 and robotY0 = 1) and !(robotX0 = 4 and robotY0 = 1)  and !(robotX0 = 3 and robotY0 = 1) and !(robotX0 = 5 and robotY0 = 1);
+	
+gar dontCollideRobot1:
+	alw !(robotX1 = 2 and robotY1 = 1) and !(robotX1 = 4 and robotY1 = 1)  and !(robotX1 = 3 and robotY1 = 1) and !(robotX1 = 5 and robotY1 = 1);
+	
+//module 2 intruder movement
+env Dim intruderX;
+env Dim intruderY;
+
+asm intruderStartBottom:
+	ini intruderY = 7;
+
+type four = Int(0..4);
+env four dontMove;
+asm ini dontMove = 0;
+
+asm intruderMustInfinitelyManyTimesStayinPlaceFor4Times:
+	alwEv dontMove = 4;
+
+//intruder movement counter
+asm alw !stay(intruderX) and stay(intruderY) -> next(dontMove) = 0;
+asm alw stay(intruderX) and stay(intruderY) -> next(dontMove) = dontMove + 1;
+
+//don't collide with obstacles just like the robots
+asm dontCollideIntruder:
+	alw !(intruderX = 2 and intruderY = 1) and !(intruderX = 4 and intruderY = 1)  and !(intruderX = 3 and intruderY = 1) and !(intruderX = 5 and intruderY = 1);
+	
+asm intruderMovement:
+	alw dontMove != 4 ->  (moveDist(intruderY) and stay(intruderX)) or (moveDist(intruderX) and stay(intruderY)) or (stay(intruderX) and stay(intruderY));
+	
+asm intruderAppearsAtBottom:
+	alw dontMove = 4 -> next(intruderY) = 7 and !(stay(intruderX) and stay(intruderY));
+	
+gar alwEv dontMove = 4;
+
+//module 3 intruder's attempts
+asm alw !(intruderX = robotX0 and intruderY = robotY0);
+asm alw !(intruderX = robotX1 and intruderY = robotY1);
+
+predicate cellIsClear(Dim x, Dim y):
+	!((robotX1) = x and (robotY1) = y)  and  !((robotX0) = x and (robotY0) = y) and !(x = 2 and y = 1) and !(x = 4 and y = 1)  and !(x = 3 and y = 1) and !(x = 5 and y = 1);
+	
+predicate robotPosition(Dim x, Dim y):
+ (robotX0 = x and robotY0 = y) or (robotX1 = x and robotY1 = y);
+ 
+define
+	intruderCantMove := (intruderX = 7 and intruderY = 7) and robotPosition(6, 7) and robotPosition(7, 6)
+						or (intruderX = 0 and intruderY = 7) and robotPosition(0, 6) and robotPosition(1, 7)
+						or (intruderX = 7 and intruderY = 0) and robotPosition(6, 0) and robotPosition(7, 1)
+						or (intruderX = 0 and intruderY = 0) and robotPosition(1, 0) and robotPosition(0, 1)
+						or intruderX >= 2 and intruderX <= 5 and intruderY = 1 and
+							robotPosition(intruderX - 1, intruderY) and robotPosition(intruderX + 1, intruderY);
+	
+	
+asm intruderMoves:
+	alw ((intruderY < 7 and cellIsClear(intruderX, intruderY + 1))
+		or (intruderY > 0 and cellIsClear(intruderX, intruderY - 1))
+		or (intruderX < 7 and cellIsClear(intruderX + 1, intruderY))
+		or (intruderX > 0 and cellIsClear(intruderX - 1, intruderY))
+		and !(intruderCantMove)) -> !(stay(intruderX) & stay(intruderY));
+		
+asm alw intruderCantMove -> stay(intruderX) and stay(intruderY);
+
+gar alw intruderCantMove -> stay(robotX0) & stay(robotY0) & stay(robotX1) & stay(robotY1);
+
+//intruder movement logic
+asm alw robotPosition(intruderX, intruderY + 1) and dontMove != 4 -> next(intruderY) <= intruderY;
+asm alw robotPosition(intruderX + 1, intruderY) and dontMove != 4 -> next(intruderX) <= intruderX;
+asm alw robotPosition(intruderX, intruderY - 1) and dontMove != 4 -> next(intruderY) >= intruderY;
+asm alw robotPosition(intruderX - 1, intruderY) and dontMove != 4 -> next(intruderX) >= intruderX;
+
+
+
+
+gar alw !(robotX0 = intruderX and robotY0 = intruderY);
+gar alw !(robotX1 = intruderX and robotY1 = intruderY);
+	

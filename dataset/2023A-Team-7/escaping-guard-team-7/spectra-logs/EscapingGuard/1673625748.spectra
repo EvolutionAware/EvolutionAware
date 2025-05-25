@@ -1,0 +1,134 @@
+import "../imports/DwyerPatterns.spectra"
+spec EscapingGuard
+
+
+/* BASE DEFINITIONS */
+
+define D := 7;
+
+type Dim = Int(0..D);
+
+// robot positions
+sys Dim robotX;
+sys Dim robotY;
+
+// the positions of guardX and guardY refer to the top left corner of the guard's square figure
+env Dim guardX;
+env Dim guardY;
+
+// define robot locations - at Start, at each fixed obstacle and touching each corner of the guard
+define
+	atStart := (robotX = D) and (robotY = 0);
+	atObs1 := (robotX = 2) and (robotY = 2);
+	atObs2 := (robotX = 2) and (robotY = 3);
+	atObs3 := (robotX = 2) and (robotY = 4);
+	atObs4 := (robotX = 2) and (robotY = 5);
+	atObs5 := (robotX = 6) and (robotY = 3);
+	atObs6 := (robotX = 6) and (robotY = 4);
+	
+	atGuardTopLeft := (robotX = guardX) and (robotY = guardY);
+	atGuardBottomLeft := (robotX = guardX) and (robotY = guardY + 1);
+	atGuardTopRight := (robotX = guardX + 1) and (robotY = guardY);
+	atGuardBottomRight := (robotX = guardX + 1) and (robotY = guardY + 1);
+
+// define the turns counter - it will always increment itself, and will overflow with modulo
+// this will enable us to limit the guard to move when the counter is equal to 0, and to limit the robot to move
+// when the counter is different than 0
+counter turnsCnt(0..2) {
+	// initialize at 0
+	turnsCnt = 0;
+	
+	// increment always
+	inc: turnsCnt < 5;
+	
+	overflow: modulo;
+}
+
+// define predicates for a player's location at each target
+predicate atTarget1(Dim posX, Dim posY):
+	posX = 0 and posY = 0;
+	
+predicate atTarget2(Dim posX, Dim posY):
+	posX = 0 and posY = D;
+	
+predicate atTarget3(Dim posX, Dim posY):
+	posX = D and posY = D;
+
+// define predicate for the legal moves in a certain dimension
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos); 
+  
+ // define a predicate for a player's staying stationary
+predicate stationaryPos(Dim posX, Dim posY):
+	(posX = next(posX)) and (posY = next(posY));
+	
+/* BASE MOVEMENT */
+
+// the robot will move only in the legal moves established
+gar robotMoves:
+  always moveDist(robotX) & moveDist(robotY);
+
+// the robot moves only when the turnsCnt is not 0
+gar robotRespectsEnvironmentTurn:
+	always turnsCnt = 0 -> stationaryPos(robotX, robotY);
+
+// the guard will move only in the legal moves established
+asm guardMoves:
+	always moveDist(guardX) & moveDist(guardY);
+	
+// the guard moves only when the turnsCnt is 0
+asm guardRespectsRobotsTurn:
+	always turnsCnt != 0 -> stationaryPos(guardX, guardY);
+
+/* INITIAL STATES */
+
+// guarantee that the robot starts at top right corner
+gar robotInitAtStart:
+	ini atStart;
+	
+// assume that the guard starts at top left corner
+asm guardInitAtTopLeft:
+	ini (guardX = 0) and (guardY = 0);
+
+/* BASIC GOAL */
+
+// robot always eventually visits all targets
+gar visitsTarget1:
+	alwEv atTarget1(robotX, robotY);
+	
+gar visitsTarget3:
+	alwEv atTarget3(robotX, robotY);
+	
+// robot visits target 2 between targets 1 and 3
+// note: in the beginning we also had a 'visitsTarget2' guarantee, but we removed it due to vacuity with the guarantee below
+gar visits2Between1And3:
+	P_becomes_true_between_Q_and_R(atTarget2(robotX, robotY), atTarget1(robotX, robotY), atTarget3(robotX, robotY));
+	
+/* GRID RULES */
+
+// robot can't go on fixed obstacles
+gar robotAvoidsObstacles:
+	always !atObs1 and !atObs2 and !atObs3 and !atObs4 and !atObs5 and !atObs6;
+	
+// robot cannot touch the guard
+gar robotAvoidsGuard:
+	always !atGuardTopLeft and !atGuardTopRight and !atGuardBottomLeft and !atGuardBottomRight;
+	
+/* all the assumptions below are needed to support the robotAvoidsGuard guarantee
+ * these assumptions mean that the guard tries to catch the robot with a naive strategy,
+ * advancing towards the robot in both dimensions in each guard's turn.
+ * using a different strategy, the guard may catch the robot, therefore these assumptions are required
+ */
+asm guardFollowsRobotOnXRobotBigger:
+	always turnsCnt = 0 and robotX > guardX -> robotX - next(guardX) < robotX - guardX;
+	
+asm guardFollowsRobotOnXRobotSmaller:
+	always turnsCnt = 0 and robotX < guardX -> next(guardX) - robotX < guardX - robotX;
+	
+asm guardFollowsRobotOnYRobotBigger:
+	always turnsCnt = 0 and robotY > guardY -> robotY - next(guardY) < robotY - guardY;
+	
+asm guardFollowsRobotOnYRobotSmaller:
+	always turnsCnt = 0 and robotY < guardY -> next(guardY) - robotY < guardY - robotY;

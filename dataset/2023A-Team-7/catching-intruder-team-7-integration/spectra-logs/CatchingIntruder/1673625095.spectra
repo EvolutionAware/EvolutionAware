@@ -1,0 +1,118 @@
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+define D := 7;
+type Dim = Int(0..D);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+env Dim intruderX;
+env Dim intruderY;
+
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+predicate stationaryDim(Dim pos):
+	pos = next(pos);
+  
+  
+/* Basic Movement Requirements */
+gar robot0Moves:
+  always (moveDist(robotX0) and moveDist(robotY0)) and (stationaryDim(robotX0) or stationaryDim(robotY0)); 
+  
+gar robot1Moves:
+  always (moveDist(robotX1) and moveDist(robotY1)) and (stationaryDim(robotX1) or stationaryDim(robotY1)); 
+  
+asm intruderMoves:
+  always intruderJumps or ((moveDist(intruderX) and moveDist(intruderY)) and (stationaryDim(intruderX) or stationaryDim(intruderY)));
+  
+/* Initial Position Requirements */
+
+gar robot0Init:
+	ini (robotX0 = 0) and (robotY0 = 0);
+	
+gar robot1Init:
+	ini (robotX1 = 7) and (robotY1 = 0);
+	
+asm intruderInit:
+	ini (intruderY = 7);
+	
+/* MODULE 2 - Obstacles */
+
+predicate atObstacle(Dim x, Dim y):
+	(y = 1) and ((x = 2) or (x = 3) or (x = 4) or (x = 5));
+
+gar robotsAvoidObstacles:
+	always !atObstacle(robotX0, robotY0) and !atObstacle(robotX1, robotY1);
+
+asm intruderAvoidsObstacles:
+	always !atObstacle(intruderX, intruderY);
+
+/* MODULE 3 - No Objects Collision */
+
+gar robotsDontCollide:
+	always (robotX0 != robotX1) or (robotY0 != robotY1);
+	
+gar robot0AndIntruderDontCollide:
+	always (robotX0 != intruderX) or (robotY0 != intruderY);
+	
+gar robot1AndIntruderDontCollide:
+	always (robotX1 != intruderX) or (robotY1 != intruderY);
+	
+asm intruderAvoidsRobot0:
+	always (next(intruderX) != robotX0) or (next(intruderY) != robotY0);
+	
+asm intruderAvoidsRobot1:
+	always (next(intruderX) != robotX1) or (next(intruderY) != robotY1);
+	
+/* MODULE 4 - Stationary Robot 1 Until Robot 0 Moves */
+
+sys boolean robot1AllowedToMove;
+
+define
+	atBottomLeft0 := (robotX0 = 0) and (robotY0 = 7);
+
+gar robot1AllowedToMoveInit:
+	ini robot1AllowedToMove = false;
+	
+gar robot1CannotMove:
+	always !robot1AllowedToMove and !atBottomLeft0 -> next(robot1AllowedToMove) = false;
+	
+gar robot1StationaryUntilAllowedToMove:
+	always !robot1AllowedToMove -> stationaryDim(robotX1) and stationaryDim(robotY1);
+	
+gar robot1MovesIndefinetly:
+	always robot1AllowedToMove -> next(robot1AllowedToMove);
+
+/* MODULE 5 - Robots Catch Intruder */
+
+counter intruderStationary(0..3) {
+	intruderStationary = 0;
+	
+	inc: stationaryDim(intruderX) and stationaryDim(intruderY);
+	
+	reset: !stationaryDim(intruderX) or !stationaryDim(intruderY);
+	
+	overflow: modulo;
+}
+
+predicate slotOccupied(Dim x, Dim y):
+	(x > 7 or y > 7) or (x < 0 or y < 0) or (x = robotX0 and y = robotY0) or (x = robotX1 and y = robotY1) or atObstacle(x,y);
+
+define
+	intruderJumps := intruderStationary = 3;
+	intruderStuck := slotOccupied(intruderX + 1, intruderY) and slotOccupied(intruderX - 1, intruderY) 
+		and slotOccupied(intruderX, intruderY + 1) and slotOccupied(intruderX, intruderY - 1);
+		
+// weakened intruderMoves assumption to support jump
+
+gar intruderAlwaysCaught:
+	alwEv intruderJumps;
+
+gar robotsLockOnIntruders:
+	always intruderStuck -> (stationaryDim(robotX0) and stationaryDim(robotY0) and stationaryDim(robotX1) and stationaryDim(robotY1));
+	

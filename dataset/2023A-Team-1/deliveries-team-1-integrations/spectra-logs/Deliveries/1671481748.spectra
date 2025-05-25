@@ -1,0 +1,114 @@
+import "../imports/DwyerPatterns.spectra"
+spec Deliveries
+
+define DX := 5;
+define DY := 5;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+type Coord = Int(0..DY);
+
+sys DimX robotX0;
+sys DimY robotY0;
+sys DimX robotX1;
+sys DimY robotY1;
+
+define elevatorX := 0;
+env DimY elevatorY;
+env DimX [2] deliveriesX;
+env DimY [2] deliveriesY;
+
+/*
+ * Module 1
+ */
+
+gar ini robotY0 = 5 and robotY1 = 5;
+
+predicate moveDistX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+
+predicate moveDistY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+
+gar robotMoveDist:
+  alw moveDistX(robotX0) and moveDistX(robotX1);
+
+asm elveatorMoveDist:
+  alw moveDistY(elevatorY);
+
+asm alwEv elevatorY = 0;
+asm alwEv elevatorY = 5;
+
+gar moveBetweenFloorsWithElevator:
+  alw (robotY0 != next(robotY0) implies (robotY0 = elevatorY and robotX0 = 0 and next(robotX0) = elevatorX)) and
+      (robotX0 = 0 implies robotY0 = elevatorY) and
+      (robotY1 != next(robotY1) implies (robotY1 = elevatorY and robotX1 = 0 and next(robotX1) = elevatorX)) and
+      (robotX1 = 0 implies robotY1 = elevatorY);
+
+/*
+ * Module 2
+ */
+ 
+gar robotsNotInSamePlace:
+	alw !(robotX0 = robotX1 and robotY0 = robotY1);
+
+gar robotsNotPassingThroughEachOther:
+	alw robotY0 = robotY1 implies !((next(robotX0) = robotX1) and (next(robotX1) = robotX0));
+
+/*
+ * Module 3
+ */
+
+gar robot0DeliversPackage:
+  alwEv robotX0 = deliveriesX[0] and robotY0 = deliveriesY[0];
+gar robot1DeliversPackage:
+  alwEv robotX1 = deliveriesX[1] and robotY1 = deliveriesY[1];
+
+//gar robot0AlwEvAtRightCornerGroundFloor:
+//  alwEv robotX0 = 5 and robotY0 = 5;
+//gar robot1AlwEvAtRightCornerGroundFloor:
+//  alwEv robotX1 = 5 and robotY1 = 5;
+
+counter packagesDeliveredByRobot0(0..3) {
+	packagesDeliveredByRobot0 = 0;
+	inc: robotX0 = deliveriesX[0] and robotY0 = deliveriesY[0];
+	reset: robotX0 = 5 and robotY0 = 5;
+	overflow: false;
+}
+
+counter packagesDeliveredByRobot1(0..4) {
+	packagesDeliveredByRobot1 = 0;
+	inc: robotX1 = deliveriesX[1] and robotY1 = deliveriesY[1];
+	reset: robotX1 = 5 and robotY1 = 5;
+	overflow: false;
+}
+
+gar alw packagesDeliveredByRobot0 < 4;
+gar alw packagesDeliveredByRobot1 < 4;
+
+asm packagesNotOnGroundFloor:
+  alw deliveriesY[0] != 5 and deliveriesY[1] != 5;
+
+/*
+ * New assumptions needed for integration
+ */
+
+asm package0WaitForRobots:
+  alw !(robotX0 = deliveriesX[0] and robotY0 = deliveriesY[0]) implies
+      (deliveriesX[0] = next(deliveriesX[0]) and deliveriesY[0] = next(deliveriesY[0]));
+
+asm package1WaitForRobots:
+  alw !(robotX1 = deliveriesX[1] and robotY1 = deliveriesY[1]) implies
+      (deliveriesX[1] = next(deliveriesX[1]) and deliveriesY[1] = next(deliveriesY[1]));
+
+asm package0ChangeFloor:
+  alw !(deliveriesX[0] = next(deliveriesX[0]) and deliveriesY[0] = next(deliveriesY[0])) implies
+      deliveriesY[0] != next(deliveriesY[0]);
+
+asm package1ChangeFloor:
+  alw !(deliveriesX[1] = next(deliveriesX[1]) and deliveriesY[1] = next(deliveriesY[1])) implies
+      deliveriesY[1] != next(deliveriesY[1]);

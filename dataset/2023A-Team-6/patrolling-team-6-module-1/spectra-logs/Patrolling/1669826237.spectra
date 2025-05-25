@@ -1,0 +1,81 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+//module 1 will handle the guarantees and assumptions for the targets: the robot should reach every target eventually when they are green, go to the top left corner between each visit to a target, and never visit when they are red
+
+env DimX targetAX;
+env DimY targetAY;
+env boolean Agreen;
+
+env DimX targetBX;
+env DimY targetBY;
+env boolean Bgreen;
+
+env DimX targetCX;
+env DimY targetCY;
+env boolean Cgreen;
+
+define atA := (robotX = targetAX) & (robotY = targetAY);
+define atB := (robotX = targetBX) & (robotY = targetBY);
+define atC := (robotX = targetCX) & (robotY = targetCY);
+define atTopLeft := (robotX = 0) & (robotY = 0);
+
+
+//guarantees to always visit each target
+
+gar eventuallyVisitTargetA:
+	alwEv atA;
+	
+gar eventuallyVisitTargetB:
+	alwEv atB;
+	
+gar eventuallyVisitTargetC:
+	alwEv atC;
+
+//guarantee to never visit red targets
+gar neverAtAWhenRed:
+	alw !(atA & !Agreen);
+	
+gar neverAtBWhenRed:
+	alw !(atB & !Bgreen);
+	
+gar neverAtCWhenRed:
+	alw !(atC & !Cgreen);
+
+//guarantee to visit top left corner between targets
+gar visitTopLeftAfterA:
+	trig [true]*[atA] |=> [!atA]*[atTopLeft];
+
+gar visitTopLeftAfterB:
+	trig [true]*[atB] |=> [!atB]*[atTopLeft];
+	
+gar visitTopLeftAfterC:
+	trig [true]*[atC] |=> [!atC]*[atTopLeft];
+
+
+//assume that targets eventually get unblocked
+asm alwEv Agreen;
+asm alwEv Bgreen;
+asm alwEv Cgreen;
+
+//assume that targets don't move
+asm targetAStaysInPlace:
+	alw (targetAX = next(targetAX)) & (targetAY = next(targetAY));
+
+asm targetBStaysInPlace:
+	alw (targetBX = next(targetBX)) & (targetBY = next(targetBY));
+	
+asm targetCStaysInPlace:
+	alw (targetCX = next(targetCX)) & (targetCY = next(targetCY));
+
+
+

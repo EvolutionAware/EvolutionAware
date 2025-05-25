@@ -1,0 +1,96 @@
+import "../imports/DwyerPatterns.spectra"
+spec Deliveries
+
+define DX := 5;
+define DY := 5;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+type Coord = Int(0..DY);
+
+sys DimX robotX0;
+sys DimY robotY0;
+sys DimX robotX1;
+sys DimY robotY1;
+
+
+//increment 1 - rooms request packages and robots are guaranteed to always get to them
+
+env DimX package0X;
+env DimY package0Y;
+env DimX package1X;
+env DimY package1Y;
+
+define robot0AtPackage := (robotX0 = package0X) & (robotY0 = package0Y);
+define robot1AtPackage := (robotX1 = package1X) & (robotY1 = package1Y);
+
+
+gar robot0getspackage:
+	alwEv robot0AtPackage;
+	
+gar robot1getspackage:
+	alwEv robot1AtPackage;
+	
+//specification is realizable and well separated so this is the end of increment 1
+
+//increment 2 - robots move one step at a time and change floors using the elevator
+env DimY elevatorY;
+
+predicate moveDistX(DimX pos):
+	pos+1= next(pos) | pos= next(pos) | pos-1= next(pos);
+
+predicate moveDistY(DimY pos):
+	pos+1= next(pos) | pos= next(pos) | pos-1= next(pos);
+
+//guarantee that robots move one step at a time
+gar robotsMoveOneStepAtATime:
+	alw moveDistX(robotX0) & moveDistX(robotX1) & moveDistY(robotY0) & moveDistY(robotY1);
+
+//guarantee that robots don't change floors outside of elevator
+gar robot0DoesntJumpFloors:
+	alw robotX0 != 0 -> robotY0 = next(robotY0);
+
+gar robot1DoesntJumpFloors:
+	alw robotX1 != 0 -> robotY1 = next(robotY1);
+
+//guarantee that robots can only move in the first column with the elevator
+gar robot0UsesElevator:
+	alw robotX0 = 0 -> robotY0 = elevatorY;
+
+gar robot1UsesElevator:
+	alw robotX1 = 0 -> robotY1 = elevatorY;
+	
+	
+
+
+	
+//assume elevator moves one floor at a time
+asm elevatorMovesOneSpaceAtATime:
+	alw moveDistY(elevatorY);
+	
+//assume elevator reaches top and bottom infinite times
+asm elevatorAlwaysReachesTop:
+	alwEv elevatorY = 0;
+
+asm elevatorAlwaysReachesBottom:
+	alwEv elevatorY = DY;
+	
+//assume packages stay in place before robot reaches them
+asm package0StaysInPlace:
+	alw !robot0AtPackage -> package0X = next(package0X) & package0Y = next(package0Y);
+
+asm package1StaysInPlace:
+	alw !robot1AtPackage -> package1X = next(package1X) & package1Y = next(package1Y);
+
+//specification is realizable so don't need more assumptions
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	

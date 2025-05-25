@@ -1,0 +1,10 @@
+<record>
+  <index>1670436062150</index>
+  <date>Wed Dec 07 20:01:02 IST 2022</date>
+  <message>TimeStamp-1670436062-Start-GLOBAL_CORE</message>
+</record>
+<record>
+  <index>1670436062767</index>
+  <date>Wed Dec 07 20:01:02 IST 2022</date>
+  <message>TimeStamp-1670436062-Operation-GLOBAL_CORE-Buffer-Found a global unrealizable core with 0 elements, at lines &lt; &gt;. See markers in specification file.</message>
+</record>

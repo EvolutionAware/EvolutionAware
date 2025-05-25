@@ -1,0 +1,44 @@
+import "../imports/DwyerPatterns.spectra"// module4- Intruder stays in place (requirements 6)
+
+spec CatchingIntruder
+define D := 7;
+type Dim = Int(0..D);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+env Dim intruderX;
+env Dim intruderY;
+
+sys boolean intruderCanMoveUp;
+gar alw intruderY != 0 & !(intruderX = robotX0 & intruderY = robotY0+1) & !(intruderX = robotX1 & intruderY = robotY1+1) & !(intruderY = 2 & intruderX >= 2 & intruderX <= 5) -> intruderCanMoveUp = true;
+gar alw !(intruderY != 0 & !(intruderX = robotX0 & intruderY = robotY0+1) & !(intruderX = robotX1 & intruderY = robotY1+1) & !(intruderY = 2 & intruderX >= 2 & intruderX <= 5)) -> intruderCanMoveUp = false;
+
+
+sys boolean intruderCanMoveDown;
+gar alw intruderY != 7 & !(intruderX = robotX0 & intruderY = robotY0-1) & !(intruderX = robotX1 & intruderY = robotY1-1) & !(intruderY = 0 & intruderX >= 2 & intruderX <= 5) -> intruderCanMoveDown = true;
+gar alw !(intruderY != 7 & !(intruderX = robotX0 & intruderY = robotY0-1) & !(intruderX = robotX1 & intruderY = robotY1-1) & !(intruderY = 0 & intruderX >= 2 & intruderX <= 5)) -> intruderCanMoveDown = false;
+
+
+sys boolean intruderCanMoveLeft;
+gar alw intruderX != 0 & !(intruderX = robotX0+1 & intruderY = robotY0) & !(intruderX = robotX1+1 & intruderY = robotY1) & !(intruderX = 6 & intruderY = 1) -> intruderCanMoveLeft = true;
+gar alw !(intruderX != 0 & !(intruderX = robotX0+1 & intruderY = robotY0) & !(intruderX = robotX1+1 & intruderY = robotY1) & !(intruderX = 6 & intruderY = 1)) -> intruderCanMoveLeft = false;
+
+
+sys boolean intruderCanMoveRight;
+gar alw intruderX != 0 & !(intruderX = robotX0-1 & intruderY = robotY0) & !(intruderX = robotX1-1 & intruderY = robotY1) & !(intruderX = 1 & intruderY = 1) -> intruderCanMoveRight = true;
+gar alw !(intruderX != 0 & !(intruderX = robotX0-1 & intruderY = robotY0) & !(intruderX = robotX1-1 & intruderY = robotY1) & !(intruderX = 1 & intruderY = 1)) -> intruderCanMoveRight = false;
+
+
+// In every infinite run, the intruder must stay in place for 4 consecutive states infinitely many times.
+counter intruderStaysCounter1(0..3){
+	intruderStaysCounter1 = 0;
+	reset: intruderX != next(intruderX) | intruderY != next(intruderY);
+	inc: intruderX = next(intruderX) & intruderY = next(intruderY);
+	overflow: false; 
+}
+asm alwEv intruderStaysCounter1 = 3;
+
+

@@ -1,0 +1,137 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+
+
+sys DimX robotX;
+sys DimY robotY;
+
+//TODO: complete the specification
+
+
+//Part 1: the robot will always eventually visit all checkpoints
+
+env DimX AX;
+env DimY AY;
+env DimX BX;
+env DimY BY;
+env DimX CX;
+env DimY CY;
+
+predicate robotAt(DimX x, DimY y) :
+	robotX = x & robotY = y;
+
+
+
+predicate stay(DimX x, DimY y) :
+	x = next(x) & y = next(y);
+	
+gar robotMove: alw
+	(robotX + 1 = next(robotX) & robotY = next(robotY)) |
+	(robotX - 1 = next(robotX) & robotY = next(robotY)) |
+	(robotX = next(robotX) & robotY + 1 = next(robotY)) |
+	(robotX = next(robotX) & robotY - 1 = next(robotY)) |
+	(robotX = next(robotX) & robotY  = next(robotY)); 
+	
+	
+asm alw	stay(AX, AY);
+asm alw	stay(BX, BY);
+asm alw	stay(CX, CY);
+
+asm ini AX != BX | AY !=BY;
+asm ini CX != BX | CY !=BY;
+asm ini AX != CX | AY !=CY;
+
+
+
+gar alwEv robotAt(AX, AY);
+gar alwEv robotAt(BX, BY);
+gar alwEv robotAt(CX, CY);
+
+
+
+//Part 2: Whenever the robot visits a target, it should eventually also visit the top left corner.
+//We assume that the meaning of this requirement  is that after visiting a target, 
+//it eventually visits the corner, but it can visit other targets along the way
+
+gar alwEv robotAt(0,0);
+
+asm ini AX != 0 | AY !=0;
+asm ini BX != 0 | BY !=0;
+asm ini CX != 0 | CY !=0;
+
+asm ini AX != 4 | AY !=0;
+asm ini BX != 4 | BY !=0;
+asm ini CX != 4 | CY !=0;
+
+//Part 3: 
+
+env boolean Ablocked;
+env boolean Bblocked;
+env boolean Cblocked;
+
+asm alwEv !Ablocked;
+asm alwEv !Bblocked;
+asm alwEv !Cblocked;
+
+//asm alw PREV(robotAt(AX, AY)) -> !Ablocked;
+//asm alw PREV(robotAt(BX, BY)) -> !Bblocked;
+//asm alw PREV(robotAt(CX, CY)) -> !Cblocked;
+
+predicate inRange(DimX x1, DimY y1, DimX x2, DimY y2):
+	x1 -1 <= x2 & x2 <= x1 + 1 &
+	y1 -1 <= y2 & y2 <= y1 + 1;
+	
+
+asm alw inRange(AX, AY, robotX, robotY) -> !Ablocked -> !next(Ablocked);
+asm alw inRange(BX, BY, robotX, robotY) -> !Bblocked -> !next(Bblocked);
+asm alw inRange(CX, CY, robotX, robotY) -> !Cblocked -> !next(Cblocked);
+
+gar alw Ablocked -> !next(robotAt(AX, AY));
+gar alw Bblocked -> !next(robotAt(BX, BY));
+gar alw Cblocked -> !next(robotAt(CX, CY));
+
+//Part 4 Occasionally, the robot starts losing power. In this case, it has to eventually go to the top right corner for charging and stay there for at least 4 states.0.
+env boolean isCharged;
+
+counter charging(0..3) {
+	charging = 0;
+	inc: robotAt(4,0);
+	reset: !robotAt(4,0);
+	overflow: keep;
+}
+
+gar alw (robotAt(4,0) & charging < 3) -> stay(robotX, robotY);
+
+asm alw charging = 3 -> next(isCharged);
+
+
+
+gar P_becomes_true_after_Q_until_R(robotAt(4, 0), !isCharged, charging=3);
+
+//Part 5: Obstacles: the robot should avoid the obstacles (we define them in advance)
+
+//env DimY Obst1x : 1;
+//env DimX Obst1y : 1;
+//define Obst2x := 3;
+//define Obst2y := 3;
+//define Obst3x := 2;
+//define Obst3y := 1;
+//define Obst4x := 0;
+//define Obst4y := 3;
+//define Obst5x := 3;
+//define Obst5y := 4;
+//
+//asm alw stay(Obs1x,Obst1y )
+//
+//gar alw !robotAt(1, 1);
+//gar alw !robotAt(3, 3);
+//gar alw !robotAt(2, 1);
+//gar alw !robotAt(0, 3);
+//gar alw !robotAt(3, 4);

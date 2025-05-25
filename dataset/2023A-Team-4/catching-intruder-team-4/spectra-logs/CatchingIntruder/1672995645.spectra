@@ -1,0 +1,78 @@
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+define D := 7;
+type Dim = Int(0..D);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+/* --------------- step 1 ---------------  
+ Focusing: The robots movement */
+/* Initially, the two robots R0 and R1 are located at the top left and right corners respectively.*/
+gar atTopLeft: ini robotX0 = 0 and robotY0 = 0;
+gar atTopRight: ini robotX1 = 7 and robotY1 = 0;
+
+/*robot's movement - both robots can stay in place or move to an empty adjacent cell, but they never move diagonally.  */
+predicate moveDist(Dim posX, Dim posY):
+  (posX+1 = next(posX) and posY = next(posY))|
+  (posX = next(posX) and posY+1 = next(posY)) |
+  (posX-1 = next(posX) and posY = next(posY))|
+  (posX = next(posX) and posY-1 = next(posY)) |
+  (posX = next(posX) and posY = next(posY));
+gar alw moveDist(robotX0, robotY0);
+gar alw moveDist(robotX1, robotY1);
+
+/* --------------- step 2 --------------- 
+Focusing: Avoiding static obstacles and no collision between the robots. */
+/* robot doesn't hit static obstacles */
+predicate robotNotOnStaticObstacles(Dim robX, Dim robY):
+	robY = 1 -> (robX != 2 and robX != 3 and robX != 4 and robX != 5);
+gar alw robotNotOnStaticObstacles(robotX0, robotY0);
+gar alw robotNotOnStaticObstacles(robotX1, robotY1);
+
+predicate noCollision(Dim X0, Dim Y0, Dim X1, Dim Y1):
+	X0 = X1 -> Y0 != Y1;	
+gar alw noCollision(robotX0, robotY0, robotX1, robotY1);
+
+/* --------------- step 3 --------------- 
+ Focusing: Intruder movement. 
+ */
+env Dim intruderX;
+env Dim intruderY;
+asm ini intruderY = 7;
+asm alw moveDist(intruderX, intruderY);
+
+predicate inturderMovementNearRobot(Dim X0, Dim Y0, Dim intX, Dim intY):
+	((X0 = intX-1 and Y0 = intY) -> (((next(intX) = intX) and ((next(intY) = intY+1) or (next(intY) = intY-1)))) or next(intX) = intX+1) and
+	((X0 = intX+1 and Y0 = intY) -> (((next(intX) = intX) and ((next(intY) = intY+1) or (next(intY) = intY-1)))) or next(intX) = intX-1) and 
+	((Y0 = intY-1 and X0 = intX) -> (((next(intY) = intY) and ((next(intX) = intX+1) or (next(intX) = intX-1)))) or next(intY) = intY+1) and 
+	((Y0 = intY+1 and X0 = intX) -> (((next(intY) = intY) and ((next(intX) = intX+1) or (next(intX) = intX-1)))) or next(intY) = intY-1);
+
+asm alw intruderLocked(robotX0, robotY0, robotX1, robotY1, intruderX, intruderY)or (inturderMovementNearRobot(robotX0, robotY0, intruderX, intruderY) and inturderMovementNearRobot(robotX1, robotY1, intruderX, intruderY));
+
+ 
+predicate intruderLocked(Dim X0, Dim Y0, Dim X1, Dim Y1, Dim intX, Dim intY):
+	(X0 = 0 and Y0=1 and intX = 0  and intY=0 and X1 = 1 and Y1 = 0) |
+	(X0 = 6 and Y0=0 and intX = 7  and intY=0 and X1 = 7 and Y1 = 1) |
+	(X0 = 0 and Y0=6 and intX = 0  and intY=7 and X1 = 1 and Y1 = 7) |
+	(X0 = 7 and Y0=6 and intX = 7  and intY=7 and X1 = 6 and Y1 = 7) |	
+	(X0 = 1 and Y0=0 and intX = 2  and intY=0 and X1 = 3 and Y1 = 0) |
+	(X0 = 2 and Y0=0 and intX = 3  and intY=0 and X1 = 4 and Y1 = 0) |
+	(X0 = 3 and Y0=0 and intX = 4  and intY=0 and X1 = 5 and Y1 = 0) |
+	(X0 = 4 and Y0=0 and intX = 5  and intY=0 and X1 = 6 and Y1 = 0) |
+	(X1 = 0 and Y1=1 and intX = 0  and intY=0 and X0 = 1 and Y0 = 0) |
+	(X1 = 6 and Y1=0 and intX = 7  and intY=0 and X0 = 7 and Y0 = 1) |
+	(X1 = 0 and Y1=6 and intX = 0  and intY=7 and X0 = 1 and Y0 = 7) |
+	(X1 = 7 and Y1=6 and intX = 7  and intY=7 and X0 = 6 and Y0 = 7) |	
+	(X1 = 1 and Y1=0 and intX = 2  and intY=0 and X0 = 3 and Y0 = 0) |
+	(X1 = 2 and Y1=0 and intX = 3  and intY=0 and X0 = 4 and Y0 = 0) |
+	(X1 = 3 and Y1=0 and intX = 4  and intY=0 and X0 = 5 and Y0 = 0) |
+	(X1 = 4 and Y1=0 and intX = 5  and intY=0 and X0 = 6 and Y0 = 0);
+	
+
+gar alwEv intruderLocked(robotX0, robotY0, robotX1, robotY1, intruderX, intruderY);
+
+
+// asm trig [intruderLocked(robotX0, robotY0, robotX1, robotY1, intruderX, intruderY)] |=> ([intruderLocked(robotX0, robotY0, robotX1, robotY1, intruderX, intruderY)]){4};

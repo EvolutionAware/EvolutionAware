@@ -1,0 +1,54 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+//module 2 will handle the restrictions on the robots movement: it cant move more than one space at a time, and cant move where there are obstacles
+
+//these arrays will be where the constant obstacles are
+env DimX[5] obstaclesX;
+env DimY[5] obstaclesY;
+
+//these will be the locations of the moving obstacle
+env DimX MX;
+env DimY MY;
+
+
+predicate moveDistX(DimX pos):
+	pos+1= next(pos) | pos= next(pos) | pos-1= next(pos);
+
+predicate moveDistY(DimY pos):
+	pos+1= next(pos) | pos= next(pos) | pos-1= next(pos);
+	
+//guarantee the robot only moves one step at a time
+gar robotMoves:
+	alw moveDistX(robotX) & moveDistY(robotY);
+	
+//guarantee the robot never touches obstacles
+gar robotDoesntTouchObstacles:
+	alw ((obstaclesX[0] != robotX) | (obstaclesY[0] != robotY)) &
+	((obstaclesX[1] != robotX) | (obstaclesY[1] != robotY)) &
+	((obstaclesX[2] != robotX) | (obstaclesY[2] != robotY)) &
+	((obstaclesX[3] != robotX) | (obstaclesY[3] != robotY)) &
+	((obstaclesX[4] != robotX) | (obstaclesY[4] != robotY)) &
+	((MX != robotX) | (MY != robotY));
+	
+	
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	

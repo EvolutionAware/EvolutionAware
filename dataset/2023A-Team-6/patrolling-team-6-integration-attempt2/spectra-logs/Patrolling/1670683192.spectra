@@ -1,0 +1,203 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+//module 1 part
+
+env DimX targetAX;
+env DimY targetAY;
+env boolean Agreen;
+
+env DimX targetBX;
+env DimY targetBY;
+env boolean Bgreen;
+
+env DimX targetCX;
+env DimY targetCY;
+env boolean Cgreen;
+
+define atA := (robotX = targetAX) & (robotY = targetAY);
+define atB := (robotX = targetBX) & (robotY = targetBY);
+define atC := (robotX = targetCX) & (robotY = targetCY);
+define atTopLeft := (robotX = 0) & (robotY = 0);
+
+
+//guarantees to always visit each target
+
+gar eventuallyVisitTargetA:
+	alwEv atA;
+	
+gar eventuallyVisitTargetB:
+	alwEv atB;
+	
+gar eventuallyVisitTargetC:
+	alwEv atC;
+
+//guarantee to never visit red targets
+gar neverAtAWhenRed:
+	alw !(atA & !Agreen);
+	
+gar neverAtBWhenRed:
+	alw !(atB & !Bgreen);
+	
+gar neverAtCWhenRed:
+	alw !(atC & !Cgreen);
+
+//guarantee to visit top left corner between targets
+gar visitTopLeftAfterA:
+	trig [atA] |=> [!atA]*[atTopLeft];
+
+gar visitTopLeftAfterB:
+	trig [atB] |=> [!atB]*[atTopLeft];
+	
+gar visitTopLeftAfterC:
+	trig [atC] |=> [!atC]*[atTopLeft];
+
+
+//assume that targets eventually get unblocked
+asm alwEv Agreen;
+asm alwEv Bgreen;
+asm alwEv Cgreen;
+
+//assume that targets don't move
+asm targetAStaysInPlace:
+	alw (targetAX = next(targetAX)) & (targetAY = next(targetAY));
+
+asm targetBStaysInPlace:
+	alw (targetBX = next(targetBX)) & (targetBY = next(targetBY));
+	
+asm targetCStaysInPlace:
+	alw (targetCX = next(targetCX)) & (targetCY = next(targetCY));
+	
+//assume that targets are on different spaces
+asm targetANotOntargetB:
+	alw (targetAX != targetBX) | (targetAY != targetBY);
+
+asm targetANotOntargetC:
+	alw (targetAX != targetCX) | (targetAY != targetCY);
+	
+asm targetCNotOntargetB:
+	alw (targetCX != targetBX) | (targetCY != targetBY);
+
+// module 2 part
+//these values will be where the constant obstacles are
+define
+	obstaclesX0 := 1;
+	obstaclesX1 := 3;
+	obstaclesX2 := 2;
+	obstaclesX3 := 0;
+	obstaclesX4 := 3;
+	obstaclesY0 := 1;
+	obstaclesY1 := 3;
+	obstaclesY2 := 1;
+	obstaclesY3 := 3;
+	obstaclesY4 := 4;
+
+//these will be the locations of the moving obstacle
+env DimX MX;
+define MY := 2;
+
+
+predicate moveDistX(DimX pos):
+	pos+1= next(pos) | pos= next(pos) | pos-1= next(pos);
+
+predicate moveDistY(DimY pos):
+	pos+1= next(pos) | pos= next(pos) | pos-1= next(pos);
+	
+//guarantee the robot only moves one step at a time
+gar robotMoves:
+	alw moveDistX(robotX) & moveDistY(robotY);
+	
+//guarantee the robot never touches obstacles
+gar robotDoesntTouchObstacles:
+	alw ((obstaclesX0 != robotX) | (obstaclesY0 != robotY)) &
+	((obstaclesX1 != robotX) | (obstaclesY1 != robotY)) &
+	((obstaclesX2 != robotX) | (obstaclesY2 != robotY)) &
+	((obstaclesX3 != robotX) | (obstaclesY3 != robotY)) &
+	((obstaclesX4 != robotX) | (obstaclesY4 != robotY)) &
+	((MX != robotX) | (MY != robotY));
+
+
+//assume constraints on the moving obstacles movement
+asm movingObstacleConstraints:
+	alw moveDistX(MX);
+	
+
+//assume moving obstacle visits both edges infinite times
+
+asm alwaysMovingLeft:
+	alwEv MX = 0;
+	
+asm alwaysMovingRight:
+	alwEv MX = DX;	
+
+	
+//module 3 part
+
+env boolean losingPower;
+
+counter turnsAtTopRight(0..4) {
+	//initiate as 0
+	turnsAtTopRight = 0;
+	//increment whenever the robot is at the top right corner
+	inc: robotX = DX & robotY = 0;
+	//reset when robot not at top right corner
+	reset: robotX != DX & robotY != DY;
+	//the robot can stay for as long as it wants, so keep overflow
+	overflow: keep;
+}
+
+gar ifLosingPowerChargeEventually:
+	trig [true]*[losingPower] |=> [true]{0,20}[turnsAtTopRight = 4];
+	
+//assumptions added after integration
+
+//assume none of the targets are on top of obstacles
+asm targetADoesntTouchObstacles:
+	alw ((obstaclesX0 != targetAX) | (obstaclesY0 != targetAY)) &
+	((obstaclesX1 != targetAX) | (obstaclesY1 != targetAY)) &
+	((obstaclesX2 != targetAX) | (obstaclesY2 != targetAY)) &
+	((obstaclesX3 != targetAX) | (obstaclesY3 != targetAY)) &
+	((obstaclesX4 != targetAX) | (obstaclesY4 != targetAY));
+	
+asm targetBDoesntTouchObstacles:
+	alw ((obstaclesX0 != targetBX) | (obstaclesY0 != targetBY)) &
+	((obstaclesX1 != targetBX) | (obstaclesY1 != targetBY)) &
+	((obstaclesX2 != targetBX) | (obstaclesY2 != targetBY)) &
+	((obstaclesX3 != targetBX) | (obstaclesY3 != targetBY)) &
+	((obstaclesX4 != targetBX) | (obstaclesY4 != targetBY));
+	
+	
+asm targetCDoesntTouchObstacles:
+	alw ((obstaclesX0 != targetCX) | (obstaclesY0 != targetCY)) &
+	((obstaclesX1 != targetCX) | (obstaclesY1 != targetCY)) &
+	((obstaclesX2 != targetCX) | (obstaclesY2 != targetCY)) &
+	((obstaclesX3 != targetCX) | (obstaclesY3 != targetCY)) &
+	((obstaclesX4 != targetCX) | (obstaclesY4 != targetCY));
+
+define obsNotOnA := (MX != targetAX) | (MY != targetAY);
+define obsNotOnB := (MX != targetBX) | (MY != targetBY);
+define obsNotOnC := (MX != targetCX) | (MY != targetCY);
+	
+asm alwEv obsNotOnA & Agreen;
+asm alwEv obsNotOnB & Bgreen;
+asm alwEv obsNotOnC & Cgreen;
+
+asm targetANotNextToTargetB:
+	alw !(((targetAX = targetBX) & ((targetAY != targetBY + 1) | (targetAY != targetBY - 1))) | ((targetAY = targetBY) & ((targetAX != targetBX + 1) | (targetAX != targetBX - 1)))); 
+	
+asm targetANotNextToTargetC:
+	alw !(((targetAX = targetCX) & ((targetAY != targetCY + 1) | (targetAY != targetCY - 1))) | ((targetAY = targetCY) & ((targetAX != targetCX + 1) | (targetAX != targetCX - 1)))); 
+	
+asm targetBNotNextToTargetC:
+	alw !(((targetBX = targetCX) & ((targetBY != targetCY + 1) | (targetBY != targetCY - 1))) | ((targetBY = targetCY) & ((targetBX != targetCX + 1) | (targetBX != targetCX - 1)))); 
+
+	

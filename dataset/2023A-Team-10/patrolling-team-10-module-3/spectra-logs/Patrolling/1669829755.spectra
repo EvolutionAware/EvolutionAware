@@ -1,0 +1,29 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+type Dim = Int(0..4);
+
+sys Dim[2] robot;
+env Dim[3][2] goals;
+
+define 
+robotInStartingPoint:= robot[0] = 0 & robot[1] = 0;
+robotAtGoalA:= robot[0] = goals[0][0] & robot[1] = goals[0][1];
+robotAtGoalB:= robot[0] = goals[0][0] & robot[1] = goals[0][1];
+robotAtGoalC:= robot[0] = goals[0][0] & robot[1] = goals[0][1];
+robotAtGoal := robotAtGoalA | robotAtGoalB | robotAtGoalC;
+
+gar alwEv robotAtGoalA;
+gar alwEv robotAtGoalB;
+gar alwEv robotAtGoalC;
+
+gar robotMoves:
+always moveDist (robot[0]) & moveDist (robot[1]);
+
+gar visitStartPointAfterGoalA:
+S_responds_to_P_globally(robotInStartingPoint, robotAtGoal);
+
+predicate moveDist(Dim pos):
+  pos+1 = next (pos) |
+pos = next (pos) |
+pos-1 = next (pos) ;   

@@ -1,0 +1,64 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+
+predicate moveDist(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+ gar robotAlwaysMove: always (moveDist(robotX) & moveDist(robotY));
+ 
+ predicate robotNotHittingObstacles(DimX robX, DimY robY, DimX obsX, DimY obsY):
+ 	robX = obsX -> robY != obsY;
+ 
+ gar alw robotNotHittingObstacles(robotX, robotY, 1, 1);
+ gar alw robotNotHittingObstacles(robotX, robotY, 3, 3);
+ gar alw robotNotHittingObstacles(robotX, robotY, 2, 1);
+ gar alw robotNotHittingObstacles(robotX, robotY, 0, 3);
+ gar alw robotNotHittingObstacles(robotX, robotY, 3, 4);
+ 
+env DimX MObstacleX;
+env DimY MObstacleY;
+
+asm alw MObstacleY = 2;
+asm ini MObstacleX =0;
+
+predicate moveRight(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos);
+
+predicate moveLeft(DimX pos):
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+define atRihgt := MObstacleX = 4;
+define atLeft := MObstacleX = 0;
+
+asm P_is_true_between_Q_and_R(moveRight(MObstacleX), atLeft, atRihgt);
+asm P_is_true_between_Q_and_R(moveLeft(MObstacleX), atRihgt, atLeft);
+
+asm alw (moveRight(MObstacleX)or moveLeft(MObstacleX));
+
+asm alwEv MObstacleX = 0;
+asm alwEv MObstacleX = 4;
+
+gar alw robotNotHittingObstacles(robotX, robotY, MObstacleX, MObstacleY);
+
+
+
+gar ini robotX = 0 and robotY = 0;
+gar alwEv robotX = 4 and robotY = 4;
+gar alw robotX = 4 and robotY = 4 -> next(robotX) = 4 and next(robotY) = 4;
+
+ 
+ 	

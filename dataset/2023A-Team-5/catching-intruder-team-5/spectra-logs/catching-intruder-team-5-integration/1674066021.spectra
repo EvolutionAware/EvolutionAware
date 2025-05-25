@@ -1,0 +1,122 @@
+
+spec CatchingIntruder
+define D := 7;
+type Dim = Int(0..D);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+env Dim intruderX;
+env Dim intruderY;
+
+predicate stay(Dim d) :
+	d = next(d);
+
+
+//Module 1
+sys boolean hasVisitedBottomLeft;
+
+gar ini robotX0 = 0 & robotX1 = D & robotY0 = 0 & robotY1 = 0;
+gar ini hasVisitedBottomLeft = false;
+
+
+gar alw robotX0 - 1 <= next(robotX0) &  next(robotX0) <= robotX0 + 1;
+gar alw robotX1 - 1 <= next(robotX1) &  next(robotX1) <= robotX1 + 1;
+gar alw robotY0 - 1 <= next(robotY0) &  next(robotY0) <= robotY0 + 1;
+gar alw robotY1 - 1 <= next(robotY1) &  next(robotY1) <= robotY1 + 1;
+gar alw stay(robotY0) | stay(robotX0);
+gar alw stay(robotY1) | stay(robotX1);
+
+gar alw robotX0 = 0 & robotY0 = D -> next(hasVisitedBottomLeft) = true;
+gar alw robotX0 != 0 | robotY0 != D -> next(hasVisitedBottomLeft) = hasVisitedBottomLeft;
+
+gar alw robotX0 != robotX1 | robotY0 != robotY1;
+
+gar alw !hasVisitedBottomLeft ->  robotX1 = D  & robotY1 = 0;	
+
+// Module 2
+
+asm alw !intruderCaught -> intruderX - 1 <= next(intruderX) &  next(intruderX) <= intruderX + 1;
+asm alw !intruderCaught -> intruderY - 1 <= next(intruderY) &  next(intruderY) <= intruderY + 1;
+asm alw !intruderCaught -> stay(intruderX) | stay(intruderY);
+
+define leftBlocked :=
+	intruderX = 0 |
+	robotX0 = intruderX - 1 & robotY0 = intruderY | 
+	robotX1 = intruderX - 1 & robotY1 = intruderY |
+	intruderX = D - 1 & intruderY = 1; // Different from original ,module to accommodate for obstacles
+
+define rightBlocked :=
+	intruderX = D |
+	robotX0 = intruderX + 1 & robotY0 = intruderY | 
+	robotX1 = intruderX + 1 & robotY1 = intruderY |
+	intruderX = 1 & intruderY = 1;
+	
+define topBlocked :=
+	intruderY = 0 |
+	robotX0 = intruderX & robotY0 = intruderY - 1 | 
+	robotX1 = intruderX & robotY1 = intruderY - 1 |
+	2 <= intruderX & intruderX <=5 & intruderY = 2;
+	
+	
+define bottomBlocked :=
+	intruderY = D |
+	robotX0 = intruderX & robotY0 = intruderY + 1 | 
+	robotX1 = intruderX & robotY1 = intruderY + 1 |
+	2 <= intruderX & intruderX <=5 & intruderY = 0;
+
+define blocked := leftBlocked & rightBlocked & topBlocked & bottomBlocked;
+
+gar ini robotX0 = 0 & robotX1 = D & robotY0 = 0 & robotY1 = 0;
+
+asm ini intruderY = D;
+
+
+gar alw robotY0 = robotY1 -> next(robotX0) != robotX1 | next(robotX1) != robotX0;
+gar alw robotX0 = robotX1 -> next(robotY0) != robotY1 | next(robotY1) != robotY0; //to prevent robotx from switching places
+
+
+
+
+asm alw next(intruderY) != robotY0 | next(intruderX) != robotX0;
+asm alw next(intruderY) != robotY1 | next(intruderX) != robotX1;
+
+
+gar alw intruderY != robotY0 | intruderX != robotX0; 
+gar alw intruderY != robotY1 | intruderX != robotX1; 
+
+
+
+
+
+
+
+asm alw (leftBlocked | rightBlocked | topBlocked | bottomBlocked) & !blocked ->  (intruderY != next(intruderY) | intruderX  != next(intruderX));
+
+//gar trig ()  |=> 
+//[!intruderCaught]*[blocked & !intruderCaught][blocked & !intruderCaught][blocked & !intruderCaught][blocked & intruderCaught];  
+//
+//
+//gar trig ()  |=> 
+//[!intruderCaught]*[blocked & !intruderCaught][blocked & !intruderCaught][blocked & !intruderCaught][blocked & intruderCaught];  
+
+counter timesBlocked(0..4) {
+	timesBlocked = 0;
+	inc: blocked;
+	reset: !blocked | intruderCaught; 
+	overflow: keep;
+}
+
+define intruderCaught := timesBlocked = 4;
+
+
+gar alwEv intruderCaught; 
+
+asm alw intruderCaught -> next(intruderY) = D;
+
+//Module 3
+
+gar alw robotY0 = 1 -> robotX0 < 2 | robotX0 > 5;
+gar alw robotY1 = 1 -> robotX1 < 2 | robotX1 > 5;
+asm alw intruderY = 1 -> intruderX < 2 | intruderX > 5;

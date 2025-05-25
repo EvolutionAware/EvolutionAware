@@ -1,0 +1,77 @@
+import "../imports/DwyerPatterns.spectra"
+// robot is going to the charger 
+
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+gar ini robotX = 0;
+gar ini robotY = 0;
+
+//possible next steps of the robot
+predicate moveDistX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+predicate moveDistY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+predicate stayY(DimY dimy):
+next(dimy) = dimy;
+
+predicate stayX(DimX dimx):
+next(dimx) = dimx;
+  
+gar robotMoves:
+  always moveDistX(robotX) & moveDistY(robotY);
+
+env DimX chargeX;
+env DimY chargeY;
+
+asm alw chargeX = 4;
+asm alw chargeY = 0;
+
+env boolean robotLostPower;
+
+define robotIsAtChargingPoint := (robotX = chargeX & robotY = chargeY);
+
+gar P_becomes_true_After_Q(robotLostPower, robotIsAtChargingPoint);
+
+counter chargeCounter(0..4){
+	chargeCounter = 0;
+	inc: robotIsAtChargingPoint;
+	reset: !robotIsAtChargingPoint;
+	overflow: false;
+}
+
+
+
+gar alw (robotIsAtChargingPoint & chargeCounter < 4) implies stayX(robotX) & stayY(robotY);
+//asm alwEv robotIsAtChargingPoint;
+
+
+//
+//env boolean lostPower;
+//env DimX chargerX;
+//env DimY chargerY;
+//asm alw chargerX = 4;
+//asm alw chargerY = 0;
+//
+//define 	
+//	atCharger := (robotX = chargerX) & (robotY = chargerY);
+//
+//
+/////*************** check syntax ******************////////
+//gar alwEv atCharger;
+//gar trig [true]*[lostPower] |=> [true]([atCharger]){4,};
+//	

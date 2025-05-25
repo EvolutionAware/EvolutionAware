@@ -1,0 +1,168 @@
+import "../imports/DwyerPatterns.spectra"
+spec Deliveries
+
+define DX := 5;
+define DY := 5;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+type Coord = Int(0..DY);
+
+sys DimX robotX0;
+sys DimY robotY0;
+sys DimX robotX1;
+sys DimY robotY1;
+
+
+//increment 1 - rooms request packages and robots are guaranteed to always get to them
+
+env DimX package0X;
+env DimY package0Y;
+env DimX package1X;
+env DimY package1Y;
+
+define robot0AtPackage := (robotX0 = package0X) & (robotY0 = package0Y);
+define robot1AtPackage := (robotX1 = package1X) & (robotY1 = package1Y);
+
+
+gar robot0getspackage:
+	alwEv robot0AtPackage;
+	
+gar robot1getspackage:
+	alwEv robot1AtPackage;
+	
+//specification is realizable and well separated so this is the end of increment 1
+
+//increment 2 - robots move one step at a time and change floors using the elevator
+env DimY elevatorY;
+
+predicate moveDistX(DimX pos):
+	pos+1= next(pos) | pos= next(pos) | pos-1= next(pos);
+
+predicate moveDistY(DimY pos):
+	pos+1= next(pos) | pos= next(pos) | pos-1= next(pos);
+
+//guarantee that robots move one step at a time
+gar robotsMoveOneStepAtATime:
+	alw moveDistX(robotX0) & moveDistX(robotX1) & moveDistY(robotY0) & moveDistY(robotY1);
+
+//guarantee that robots don't change floors outside of elevator
+gar robot0DoesntJumpFloors:
+	alw robotX0 != 0 -> robotY0 = next(robotY0);
+
+gar robot1DoesntJumpFloors:
+	alw robotX1 != 0 -> robotY1 = next(robotY1);
+
+//guarantee that robots can only move in the first column with the elevator
+gar robot0UsesElevator:
+	alw robotX0 = 0 -> robotY0 = elevatorY;
+
+gar robot1UsesElevator:
+	alw robotX1 = 0 -> robotY1 = elevatorY;
+	
+//guarantee that robots can only get off on the floor of the elevator
+gar robot0GetsOffOnElevatorFloor:
+	alw robotX0 = 0 & next(robotX0) != 0 -> robotY0 = next(robotY0);
+	
+gar robot1GetsOffOnElevatorFloor:
+	alw robotX1 = 0 & next(robotX1) != 0 -> robotY1 = next(robotY1);
+
+
+	
+//assume elevator moves one floor at a time
+asm elevatorMovesOneSpaceAtATime:
+	alw moveDistY(elevatorY);
+	
+//assume elevator reaches top and bottom infinite times
+asm elevatorAlwaysReachesTop:
+	alwEv elevatorY = 0;
+
+asm elevatorAlwaysReachesBottom:
+	alwEv elevatorY = DY;
+	
+//assume packages stay in place before robot reaches them
+
+asm package0StaysInPlace:
+	alw !robot0AtPackage -> package0X = next(package0X) & package0Y = next(package0Y);
+
+asm package1StaysInPlace:
+	alw !robot1AtPackage -> package1X = next(package1X) & package1Y = next(package1Y);
+
+//specification is realizable so don't need more assumptions
+	
+//increment 3 - robots never touch each other
+
+//also have to make sure robots don't pass by each other
+gar robotsDontPassOverEachOther:
+	alw robotY0 = robotY1 -> robotX0 != robotX1 & next(robotX0) != robotX1 & next(robotX1) != robotX0;
+
+//specification is realizable so don't need more assumptions
+	
+//increment 4 - robots don't pick up more than 3 packages without visiting bottom right corner
+
+counter Robot0PackagesWithoutVisitingBottomRight(0..4) {
+	//initiate as 0
+	Robot0PackagesWithoutVisitingBottomRight = 0;
+	//increment whenever the robot picks up a package
+	inc: robot0AtPackage;
+	//reset when robot at bottom right corner
+	reset: robotX0 = DX & robotY0 = DY;
+}
+	
+counter Robot1PackagesWithoutVisitingBottomRight(0..4) {
+	//initiate as 0
+	Robot1PackagesWithoutVisitingBottomRight = 0;
+	//increment whenever the robot picks up a package
+	inc: robot1AtPackage;
+	//reset when robot at bottom right corner
+	reset: robotX1 = DX & robotY1 = DY;
+}
+//guarantee that the robots don't pick up more than 3 packages without visiting bottom right
+gar alw Robot0PackagesWithoutVisitingBottomRight <= 3;
+gar alw Robot1PackagesWithoutVisitingBottomRight <= 3;
+
+//assume packages aren't on ground floor and on the elevator
+asm packagesArentOnGroundFloor:
+	alw package0Y != DY & package1Y != DY;
+asm packagesArentOnElevator:
+	alw package0X != 0 & package1X != 0;
+
+//assume packages change floors after being picked up
+asm alw robot0AtPackage -> package0Y != next(package0Y);
+asm alw robot1AtPackage -> package1Y != next(package1Y);
+
+//specification is realizable so don't need more assumptions
+
+//increment 5 - robots start on ground floor
+gar robotsStartOnGroundFloor:
+	ini robotY0 = DY & robotY1 = DY;
+
+//specification is realizable so don't need more assumptions
+
+//increment 6 - elevator test on startup
+//since packages aren't on ground floor each robot only needs the guarantee for the other one to have gotten off the ground floor, since getting to the package implies it itself left the ground floor
+
+monitor Int(0..2) robot0GotOffGroundFloorThenBack { //will be 0 before robot leaves the ground floor, 1 after robot leaves the ground floor, and 2 after it comes back
+	ini robot0GotOffGroundFloorThenBack = 0;
+	alw ((robot0GotOffGroundFloorThenBack = 0 & robotY0 = DY) -> next(robot0GotOffGroundFloorThenBack) = 0)
+		& ((robot0GotOffGroundFloorThenBack = 0 & robotY0 != DY) -> next(robot0GotOffGroundFloorThenBack) = 1)
+		& ((robot0GotOffGroundFloorThenBack = 1 & robotY0 != DY) -> next(robot0GotOffGroundFloorThenBack) = 1)
+		& ((robot0GotOffGroundFloorThenBack = 1 & robotY0 = DY) -> next(robot0GotOffGroundFloorThenBack) = 2)
+		& ((robot0GotOffGroundFloorThenBack = 2) -> next(robot0GotOffGroundFloorThenBack) = 2);
+}
+
+monitor Int(0..2) robot1GotOffGroundFloorThenBack { //will be 0 before robot leaves the ground floor, 1 after robot leaves the ground floor, and 2 after it comes back
+	ini robot1GotOffGroundFloorThenBack = 0;
+	alw ((robot1GotOffGroundFloorThenBack = 0 & robotY1 = DY ) -> next(robot1GotOffGroundFloorThenBack) = 0)
+		& ((robot1GotOffGroundFloorThenBack = 0 & robotY1 != DY) -> next(robot1GotOffGroundFloorThenBack) = 1)
+		& ((robot1GotOffGroundFloorThenBack = 1 & robotY1 != DY) -> next(robot1GotOffGroundFloorThenBack) = 1)
+		& ((robot1GotOffGroundFloorThenBack = 1 & robotY1 = DY) -> next(robot1GotOffGroundFloorThenBack) = 2)
+		& ((robot1GotOffGroundFloorThenBack = 2) -> next(robot1GotOffGroundFloorThenBack) = 2);
+}
+
+gar robot1WaitsForRobot0:
+	robot1AtPackage -> robot0GotOffGroundFloorThenBack = 2;
+
+gar robot0WaitsForRobot1:
+	robot0AtPackage -> robot1GotOffGroundFloorThenBack = 2;
+

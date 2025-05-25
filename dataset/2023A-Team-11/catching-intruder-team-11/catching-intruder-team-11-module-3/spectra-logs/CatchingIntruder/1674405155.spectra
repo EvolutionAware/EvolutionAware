@@ -1,0 +1,50 @@
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+define D := 7;
+type Dim = Int(0..D);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+env Dim intruderX;
+env Dim intruderY;
+
+predicate stay(Dim dim):
+	next(dim) = dim;
+	
+//check robot position
+predicate robotAt(Dim x, Dim y):
+ (robotX0 = x & robotY0 = y) | (robotX1 = x & robotY1 = y);
+ 
+
+define
+	intruderTopLeft:= intruderX = 0 & intruderY = 0;
+	intruderTopRight:= intruderX = 7 & intruderY = 0;
+	intruderBottomLeft:= intruderX = 0 & intruderY = 7;
+	intruderBottomRight:= intruderX = 7 & intruderY = 7;
+	topLeft:= intruderTopLeft & robotAt(1, 0) & robotAt(0, 1);
+	topRight:= intruderTopRight & robotAt(6, 0) & robotAt(7, 1);
+	bottomLeft:= intruderBottomLeft & robotAt(0, 6) & robotAt(1, 7);
+	bottomRight:= intruderBottomRight & robotAt(6, 7) & robotAt(7, 6);
+	mid:= intruderX >= 2 & intruderX <= 5 & intruderY = 1 &
+		robotAt(intruderX - 1, intruderY) & robotAt(intruderX + 1, intruderY);
+	stuck:= StaysCounter != 4 & (topLeft | topRight | bottomLeft | bottomRight | mid);
+
+//count the amount of consecutive states the intruder stays in place
+type count = Int(0..4);
+env count StaysCounter;
+asm ini StaysCounter = 0;
+asm alw stay(intruderX) & stay(intruderY) -> next(StaysCounter) = StaysCounter + 1;
+asm alw !stay(intruderX) & stay(intruderY) -> next(StaysCounter) = 0;
+
+//make sure the intrufer stays in place when stuck
+asm alw stuck -> stay(intruderX) & stay(intruderY);
+//make sure the robot stays in plave when intruder sruck
+gar alw stuck -> stay(robotX0) & stay(robotY0) & stay(robotX1) & stay(robotY1);
+
+
+gar alwEv StaysCounter = 4;
+
+

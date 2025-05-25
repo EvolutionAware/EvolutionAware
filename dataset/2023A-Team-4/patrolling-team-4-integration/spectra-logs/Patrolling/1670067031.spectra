@@ -1,0 +1,123 @@
+import "../imports/DwyerPatterns.spectra"
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+/* All the targets locations. */
+env DimX targetAX;
+env DimY targetAY;
+env DimX targetBX;
+env DimY targetBY;
+env DimX targetCX;
+env DimY targetCY;
+
+
+/* The targets should stay at their place. */
+predicate stay(DimX posX, DimY posY):
+  posX = next(posX) and posY = next(posY);
+  
+asm alw stay(targetAX, targetAY);  
+asm alw stay(targetBX, targetBY);  
+asm alw stay(targetCX, targetCY);  
+ 
+define atTopLeftCorner := robotX = 0 and robotY = 0;
+	atA := robotX = targetAX and robotY = targetAY;
+	atB := robotX = targetBX and robotY = targetBY;
+	atC := robotX = targetCX and robotY = targetCY;
+
+env boolean isABlocked;
+env boolean isBBlocked;
+env boolean isCBlocked;
+
+
+/* change late to no neigberhood */
+predicate differentPlaces(DimX tar1X, DimY tar1Y, DimX tar2X, DimY tar2Y):
+	(tar1X = tar2X -> (tar1Y != tar2Y and tar1Y != tar2Y +1 and tar1Y != tar2Y -1)) and
+	(tar1Y = tar2Y -> (tar1X != tar2X and tar1X != tar2X +1 and tar1X != tar2X -1)) ;
+
+asm alw differentPlaces(targetAX, targetAY, targetBX, targetBY);
+asm alw differentPlaces(targetAX, targetAY, targetCX, targetCY);
+asm alw differentPlaces(targetCX, targetCY, targetBX, targetBY);
+
+/* The robot start at the top left corner. */
+gar ini atTopLeftCorner;
+
+/* The robot goes on each target for infinity times. */
+gar alwEv atA;
+gar alwEv atB;
+gar alwEv atC;
+gar alwEv atTopLeftCorner;
+
+/* The robot can move one step in each time */
+predicate moveDist(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+gar robotAlwaysMove: always (moveDist(robotX) & moveDist(robotY));
+
+gar alw isABlocked -> !atA;
+gar alw isBBlocked -> !atB;
+gar alw isCBlocked -> !atC;
+
+asm alwEv !isABlocked;
+asm alwEv !isBBlocked;
+asm alwEv !isCBlocked;
+
+asm ini targetAX = 0 and targetAY = 0 -> !isABlocked; 
+asm ini targetBX = 0 and targetBY = 0 -> !isBBlocked;
+asm ini targetCX = 0 and targetCY = 0 -> !isCBlocked;
+
+
+predicate notOnObstacles(DimX targetX, DimY targetY):
+	(targetX = 1 -> targetY != 1) and (targetX = 3 -> targetY != 3)  and (targetX = 2 -> targetY != 1) and (targetX = 0 -> targetY != 3) and (targetX = 3 -> targetY != 4) and (targetX = 4 -> targetY != 0);
+
+predicate RobotnotOnObstacles(DimX targetX, DimY targetY):
+	(targetX = 1 -> targetY != 1) and (targetX = 3 -> targetY != 3)  and (targetX = 2 -> targetY != 1) and (targetX = 0 -> targetY != 3) and (targetX = 3 -> targetY != 4);
+
+gar alw RobotnotOnObstacles(robotX, robotY);
+
+asm alw notOnObstacles(targetAX, targetAY);
+asm alw notOnObstacles(targetBX, targetBY);
+asm alw notOnObstacles(targetCX, targetCY); 
+
+
+//asm alw atA -> next(!isABlocked);
+//asm alw atB -> next(!isBBlocked);
+//asm alw atC -> next(!isCBlocked);
+
+//env DimX MObstacleX;
+//define MObstacleY := 2;
+//
+//asm alwEv MObstacleX = 0;
+//asm alwEv MObstacleX = 4;
+//asm alw moveDist(MObstacleX);
+//
+//
+//gar alw robotY = MObstacleY -> robotX != MObstacleX;
+//
+//counter slower(0..3) {
+//	slower = 0;
+//	inc: !atTopLeftCorner;
+//	overflow: modulo;
+//}
+//asm slowerBad: alw slower < 3 -> MObstacleX = next(MObstacleX); 
+
+//asm alw !isABlocked; // and targetAY = 2 -> targetAX != MObstacleX; 
+//asm alw !isBBlocked; // and targetBY = 2 -> targetBX != MObstacleX; 
+//asm alw !isCBlocked; // and targetCY = 2 -> targetCX != MObstacleX; 
+
+define atChargingPlace := robotX = 4 and robotY = 0;
+gar alwEv atChargingPlace;
+//
+gar trig [true]*[atChargingPlace] |=> [atChargingPlace]{3,};
+
+
+

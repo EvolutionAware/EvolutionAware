@@ -1,0 +1,94 @@
+import "../imports/DwyerPatterns.spectra"
+//Avoiding obstacles (fixed obstacles and moving obstacle)
+
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+gar ini robotX = 0;
+gar ini robotY = 0;
+
+// Declaring the obstacles 
+define 
+	obstacle1X := 1;
+	obstacle1Y := 1;
+	obstacle2X := 2;
+	obstacle2Y := 1;
+	obstacle3X := 0;
+	obstacle3Y := 3;
+	obstacle4X := 3;
+	obstacle4Y := 3;
+	obstacle5X := 3;
+	obstacle5Y := 4;
+	
+// Declaring the targets
+env DimX A_X;
+env DimY A_Y;
+env DimX B_X;
+env DimY B_Y;
+env DimX C_X;
+env DimY C_Y;
+
+//moving obstacle
+env DimX movingObstacle_X;
+env DimY movingObstacle_Y;
+asm alw movingObstacle_Y = 2;
+
+predicate stayY(DimY dimy):
+ next(dimy) = dimy;
+
+//possible next steps of the robot
+predicate moveDistX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+predicate moveDistY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+
+// possible next steps of the robot  
+ gar robotMoves:
+  always moveDistX(robotX) & moveDistY(robotY);
+  
+  //possible next steps of the moving obstacle
+asm movingObstaclesMoves:
+ always moveDistX(movingObstacle_X) & stayY(movingObstacle_Y);
+ 
+ 
+// The sliding obstacle visits both ends of the row infinitely often
+asm alwEv movingObstacle_X = 0;
+asm alwEv movingObstacle_X = 4;
+
+//The robot should guarantee to never be covered by the moving obstacle. 
+gar alw !(robotX = movingObstacle_X & robotY = movingObstacle_Y);
+
+// robot should not touch the obstacles
+//gar alw (robotX != obstacle1X | robotY != obstacle1Y);
+//gar alw (robotX != obstacle2X | robotY != obstacle2Y);
+//gar alw (robotX != obstacle3X | robotY != obstacle3Y);
+//gar alw (robotX != obstacle4X | robotY != obstacle4Y);
+//gar alw (robotX != obstacle5X | robotY != obstacle5Y);
+
+//to improve perfomances
+gar alw (robotX != 1 | robotY != 1);
+gar alw (robotX != 2 | robotY != 1);
+gar alw (robotX != 0 | robotY != 3);
+gar alw (robotX != 3 | robotY != 3);
+gar alw (robotX != 3 | robotY != 4);
+
+//We don't want that the next step of the robot and the moving obstacle will be to the same place, which is also a target
+gar alw (A_X = next(movingObstacle_X)) -> (next(robotX) != A_X);
+gar alw (B_X = next(movingObstacle_X)) -> (next(robotX) != B_X);
+gar alw (C_X = next(movingObstacle_X)) -> (next(robotX) != C_X);
+
+
+	

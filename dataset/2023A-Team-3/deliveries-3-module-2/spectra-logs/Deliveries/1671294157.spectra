@@ -1,0 +1,49 @@
+// feature 2- lamps 
+import "../imports/DwyerPatterns.spectra"
+spec Deliveries
+
+define DX := 5;
+define DY := 5;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+type Coord = Int(0..DY);
+
+sys DimX robotX0;
+sys DimY robotY0;
+sys DimX robotX1;
+sys DimY robotY1;
+
+env DimX lamp0X;
+env DimY lamp0Y;
+env DimX lamp1X;
+env DimY lamp1Y;
+
+// rooms on the the ground floor never ask for a package 
+asm alw lamp1Y != 0;
+asm alw lamp0Y != 0;
+
+// Lamps don't move until the correct robot picks them up 
+asm alw !(lamp0X = robotX0 & lamp0Y = robotY0) | packagesCounter0 >= 3 -> lamp0X = next(lamp0X) & lamp0Y = next(lamp0Y);
+asm alw !(lamp1X = robotX1 & lamp1Y = robotY1) | packagesCounter1 >= 3  -> lamp1X = next(lamp1X) & lamp1Y = next(lamp1Y);
+
+
+// When the correct robot arrives at the room, the lamp icon disappears and pops up somewhere else, but not on the same floor
+asm alw (lamp0X = robotX0 & lamp0Y = robotY0 & packagesCounter0 < 3) -> lamp0Y != next(lamp0Y);
+asm alw (lamp1X = robotX1 & lamp1Y = robotY1 & packagesCounter1 < 3) -> lamp1Y != next(lamp1Y);
+
+
+//Each robot will never deliver more than three packages without visiting the ground floor right corner at least once.
+counter packagesCounter0(0..3){
+	packagesCounter0 = 0;
+	reset: robotY0 = 0 & robotX0 = 5;
+	inc: robotX0 = lamp0X & robotY0 = lamp0Y;
+	overflow: false; 
+}
+
+counter packagesCounter1(0..3){
+	packagesCounter1 = 0;
+	reset: robotY1 = 0 & robotX1 = 5;
+	inc: robotX1 = lamp1X & robotY1 = lamp1Y;
+	overflow: false; 
+}

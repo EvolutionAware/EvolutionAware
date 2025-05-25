@@ -1,0 +1,10 @@
+<record>
+  <index>1671276216573</index>
+  <date>Sat Dec 17 13:23:36 IST 2022</date>
+  <message>TimeStamp-1671276216-Start-UNREALIZABLE_CORE</message>
+</record>
+<record>
+  <index>1671276216849</index>
+  <date>Sat Dec 17 13:23:36 IST 2022</date>
+  <message>TimeStamp-1671276216-Operation-UNREALIZABLE_CORE-Buffer-Found unrealizable core with 5 elements, at lines &lt; 47 48 49 50 30 &gt;. See markers in specification file.</message>
+</record>

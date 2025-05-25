@@ -1,0 +1,60 @@
+import "../imports/DwyerPatterns.spectra"
+// reaching targets
+
+spec Patrolling
+
+define DX := 4;
+define DY := 4;
+
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+sys DimX robotX;
+sys DimY robotY;
+
+gar ini robotX = 0;
+gar ini robotY = 0;
+
+// Declaring the targets
+env DimX A_X;
+env DimY A_Y;
+env DimX B_X;
+env DimY B_Y;
+env DimX C_X;
+env DimY C_Y;
+
+//Targets should not change location during a run
+asm alw (next(A_X) = A_X) & (next(A_Y) = A_Y);
+asm alw (next(B_X) = B_X) & (next(B_Y) = B_Y);
+asm alw (next(C_X) = C_X) & (next(C_Y) = C_Y);
+
+//possible next steps of the robot
+predicate moveDistX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+predicate moveDistY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+ gar robotMoves:
+  always moveDistX(robotX) & moveDistY(robotY);
+  
+  
+ // Robot reaches the target
+define 
+	atTarget := (robotX = A_X & robotY = A_Y) | (robotX = B_X & robotY = B_Y) | (robotX = C_X & robotY = C_Y) ;
+	atLeftCorner := robotX = 0 & robotY = 0;
+	
+//req 1
+// Always, sometimes in the future, the robot will visit each of the targets
+gar alwEv robotX = A_X & robotY = A_Y;
+gar alwEv robotX = B_X & robotY = B_Y;
+gar alwEv robotX = C_X & robotY = C_Y;
+
+
+// req 2
+//Whenever the robot visits a target, it should eventually also visit the top left corner.
+gar P_becomes_true_After_Q(atTarget, atLeftCorner);

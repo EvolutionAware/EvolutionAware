@@ -1,0 +1,15 @@
+<record>
+  <index>1670435118252</index>
+  <date>Wed Dec 07 19:45:18 IST 2022</date>
+  <message>TimeStamp-1670435118-Start-ALL_CORES</message>
+</record>
+<record>
+  <index>1670435118484</index>
+  <date>Wed Dec 07 19:45:18 IST 2022</date>
+  <message>TimeStamp-1670435118-Operation-ALL_CORES-Buffer-Core #1 at lines &lt; &gt; is</message>
+</record>
+<record>
+  <index>1670435118523</index>
+  <date>Wed Dec 07 19:45:18 IST 2022</date>
+  <message>TimeStamp-1670435118-Operation-ALL_CORES-Buffer-The intersection of all the cores is empty.</message>
+</record>

@@ -1,0 +1,69 @@
+import "../imports/DwyerPatterns.spectra"
+spec CatchingIntruder
+define D := 7;
+type Dim = Int(0..D);
+
+sys Dim robotX0;
+sys Dim robotY0;
+sys Dim robotX1;
+sys Dim robotY1;
+
+env Dim intruderX;
+env Dim intruderY;
+
+predicate moveDist(Dim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);
+  
+predicate stationaryDim(Dim pos):
+	pos = next(pos);
+  
+  
+/* Basic Movement Requirements */
+gar robot0Moves:
+  always (moveDist(robotX0) and moveDist(robotY0)) and (stationaryDim(robotX0) or stationaryDim(robotY0)); 
+  
+gar robot1Moves:
+  always (moveDist(robotX1) and moveDist(robotY1)) and (stationaryDim(robotX1) or stationaryDim(robotY1)); 
+  
+asm intruderMoves:
+  always intruderJumps or ((moveDist(intruderX) and moveDist(intruderY)) and (stationaryDim(intruderX) or stationaryDim(intruderY)));
+  
+/* Initial Position Requirements */
+
+gar robot0Init:
+	ini (robotX0 = 0) and (robotY0 = 0);
+	
+gar robot1Init:
+	ini (robotX1 = 7) and (robotY1 = 0);
+	
+asm intruderInit:
+	ini (intruderY = 7);
+	
+/* MODULE 5 - Robots Catch Intruder */
+
+// from no collisions module, we must have these assumptions or else the intruder will never get caught
+asm intruderAvoidsRobot0:
+	always (next(intruderX) != robotX0) or (next(intruderY) != robotY0);
+	
+asm intruderAvoidsRobot1:
+	always (next(intruderX) != robotX1) or (next(intruderY) != robotY1);
+
+counter intruderStationary(0..3) {
+	intruderStationary = 0;
+	
+	inc: stationaryDim(intruderX) and stationaryDim(intruderY);
+	
+	reset: !stationaryDim(intruderX) or !stationaryDim(intruderY);
+	
+	overflow: modulo;
+}
+
+define
+	intruderJumps := intruderStationary = 3;
+
+// weakened intruderMoves assumption to support jump
+
+gar intruderAlwaysCaught:
+	alwEv intruderJumps;

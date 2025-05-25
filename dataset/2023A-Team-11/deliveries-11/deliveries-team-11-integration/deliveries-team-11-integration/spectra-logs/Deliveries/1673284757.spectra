@@ -1,0 +1,113 @@
+import "../imports/DwyerPatterns.spectra"// Integration
+spec Deliveries
+define DX := 5;
+define DY := 5;
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+type Coord = Int(0..DY);
+sys DimX robotX0;
+sys DimY robotY0;
+sys DimX robotX1;
+sys DimY robotY1;
+env DimX p0X;
+env DimY p0Y;
+env DimX p1X;
+env DimY p1Y;
+//declaring elevator
+env DimY elvY;
+define elvX := 0;
+//the elevator moves
+asm alw moveDistY(elvY);
+//the elevator should infinitely reach ground and top floors
+asm alwEv elvY = 0;
+asm alwEv elvY = 5;
+//first location of the robot- ground floor.
+gar ini robotY0 = 5;
+gar ini robotY1 = 5;
+predicate samePlace(DimX x1, DimY y1, DimX x2, DimY y2):
+	x1 = x2 & y1 = y2;
+//robot moves in the x-axis in each floor.
+gar alw moveDistX(robotX0); 
+gar alw moveDistX(robotX1); 
+//robots should not collide
+gar alw !samePlace(robotX0, robotY0, robotX1, robotY1);
+gar alw robotY0 = robotY1 & robotX0 < robotX1 implies next(robotX0) <= next(robotX1);
+gar alw robotY0 = robotY1 & robotX1 < robotX0 implies next(robotX1) <= next(robotX0);
+//robot can only enter elevator from the same floor.
+gar alw robotY0 != elvY implies robotX0 != elvX;
+gar alw robotY1 != elvY implies robotX1 != elvX;
+
+
+//start up elevator test
+sys boolean r1BackToGound;
+sys boolean r2BackToGound;
+gar ini r1BackToGound = false;
+gar ini r2BackToGound = false;
+
+gar alw next(robotY0) = 5 & robotY0 < 5 -> next(r1BackToGound) = true;
+gar alw next(robotY1) = 5 & robotY1 < 5 -> next(r2BackToGound) = true;
+
+gar alw !(next(robotY1) = 5 & robotY1 < 5) -> next(r2BackToGound) = r2BackToGound;
+gar alw !(next(robotY0) = 5 & robotY0 < 5) -> next(r1BackToGound) = r1BackToGound;
+
+gar alw !r1BackToGound | !r2BackToGound -> !r0AtPack & !r1AtPack;
+
+
+predicate moveDistX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);  
+  
+predicate moveDistY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);  
+  
+predicate stayY(DimY dimy):
+next(dimy) = dimy;
+predicate stayX(DimX dimx):
+next(dimx) = dimx;
+define	r0atElv := robotX0 = elvX & robotY0 =  elvY;
+		r1atElv := robotX1 = elvX & robotY1 =  elvY;
+		move0WithElv := next(robotY0) = next(elvY) & next(robotX0) = elvX;
+		move1WithElv := next(robotY1) = next(elvY) & next(robotX1) = elvX;
+//when in the elevator robot can choose- move with elevator or exit
+//when not in elevator robot robot can only move in x- axis
+gar alw !r0atElv implies moveDistX(robotX0) & stayY(robotY0);
+gar alw r0atElv implies (move0WithElv) | (moveDistX(robotX0) & stayY(robotY0));
+gar alw !r1atElv implies moveDistX(robotX1) & stayY(robotY1);
+gar alw r1atElv implies (move1WithElv) | (moveDistX(robotX1) & stayY(robotY1));
+define	r0AtPack := robotX0 = p0X & robotY0 = p0Y;
+		r1AtPack := robotX1 = p1X & robotY1 = p1Y;
+		r0AtCorner := robotX0 = 5 & robotY0 = 5;
+		r1AtCorner := robotX1 = 5 & robotY1 = 5;
+//when robots crosses packages and already picked more then 3 packages, packages should remain foot.
+//otherwise- packages should be requested from a different floor but not from the ground floor.
+asm alw !r0AtPack | r0Count >= 3 implies (stayX(p0X) & stayY(p0Y));
+asm alw !r1AtPack | r1Count >= 3 implies (stayX(p1X) & stayY(p1Y));
+asm alw r0AtPack & r0Count < 3 implies next(p0Y) != p0Y & next(p0Y) != 5;
+asm alw r1AtPack & r1Count < 3 implies next(p1Y) != p1Y & next(p1Y) != 5;
+//the robot should eventually reach the right package
+gar alwEv r0AtPack;
+gar alwEv r1AtPack;
+counter r0Count(0..3){
+	r0Count = 0;
+	inc: r0AtPack;
+	reset: r0AtCorner;
+	overflow: false;
+}
+counter r1Count(0..3){
+	r1Count = 0;
+	inc: r1AtPack;
+	reset: r1AtCorner;
+	overflow: false;
+}
+//package should not appear in the ground floor
+asm alw p0Y != 5;
+asm alw p1Y != 5;
+//packages shouldn't appear on the elevator
+asm alw p0X != 0;
+asm alw p1X != 0;
+//robot reaches corner after delivering more then 3 packages.
+gar S_responds_to_P_globally(r0AtCorner, r0Count >= 3 );
+gar S_responds_to_P_globally(r1AtCorner, r1Count >= 3 );

@@ -1,0 +1,88 @@
+import "../imports/DwyerPatterns.spectra"
+spec EscapingGuard
+
+define D := 7;
+define DM := 6;
+
+type Dim = Int(0..D);
+type DimM = Int(0..DM);
+
+sys Dim robotX;
+sys Dim robotY;
+
+define t1X := 0;
+define t1Y := 0;
+
+define t2X := 7;
+define t2Y := 7;
+ 
+define t3X := 0;
+define t3Y := 7;
+
+env DimM mx;
+env DimM my;
+
+//fixed obstacles 
+define obstacle1X := 2;
+define obstacle1Y := 2;
+define obstacle2X := 2;
+define obstacle2Y := 3;
+define obstacle3X := 2;
+define obstacle3Y := 4;
+define obstacle4X := 2;
+define obstacle4Y := 5;
+
+
+//Initially, the robot stands at the top right corner (marked Init), and the guard stands at the top left corner (covering T1). 
+gar ini robotX = 7 & robotY = 0;
+asm ini mx = 0 & my = 0; 
+
+//A robot R has to visit the three targets T1, T2, and T3 infinitely often in every run.
+gar alwEv robotX = t1X & robotY = t1Y;
+gar alwEv robotX = t2X & robotY = t2Y;
+gar alwEv robotX = t3X & robotY = t3Y;
+
+predicate moveDistRobot(Dim pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);  
+  
+predicate moveDistM(DimM pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);     
+
+// In each move, the guard and the robot can stay in place or move to an empty adjacent cell (including diagonally). 
+gar alw moveDistRobot(robotX);
+gar alw moveDistRobot(robotY);
+asm alw moveDistM(mx);
+asm alw moveDistM(my);
+
+
+//Black cells denote cells that the robot must never visit.
+gar alw !(robotX = obstacle1X & robotY = obstacle1Y);
+gar alw !(robotX = obstacle2X & robotY = obstacle2Y);
+gar alw !(robotX = obstacle3X & robotY = obstacle3Y);
+gar alw !(robotX = obstacle4X & robotY = obstacle4Y);
+
+//Whenever the robot visits T1, it must visit T2 before it visits T3. 
+//gar robotX = t1X & robotY = t1Y -> S_responds_to_P_globally(robotX = t3X & robotY = t3Y, robotX = t2X & robotY = t2Y);
+gar P_becomes_true_between_Q_and_R(robotX = t2X & robotY = t2Y, robotX = t1X & robotY = t1Y, robotX = t3X & robotY = t3Y);
+
+//If the robot is to the left of the moving guard, the guard moves left.
+asm alw robotX < mx -> next(mx) <= mx;
+//If the robot is to the right of the moving guard, the guard moves right.
+asm alw robotX > mx -> next(mx) >= mx; 
+//If the robot is above the moving guard, the guard moves up. 
+asm alw robotY < my -> next(my) <= my; 
+//If the robot is below the moving guard, the guard moves down. 
+asm alw robotY > my -> next(my) >= my; 
+
+//That is, in every three states, only the guard can move in the first state, and then only the robot can move in the next two states. 
+counter statesCounter(0..2){
+	statesCounter = 0;
+	overflow: false; 
+}
+
+gar alw statesCounter-3 = 0 -> robotX = next(robotX) & robotY = next(robotY); 
+
